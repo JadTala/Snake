@@ -37,17 +37,16 @@ main:
 ; BEGIN: clear_leds
 clear_leds:
     stw zero, LEDS(zero)
-
-    addi t0, zero, 4
-    stw zero, LEDS(t0) 
-
-    addi t1, zero, 8
-    stw zero, LED(t1)
+    stw zero, LEDS + 4 (zero) 
+    stw zero, LEDS + 8 (zero) ; addi t1, zero, 8 || stw zero, LEDS(t1)
+    ret
 ; END: clear_leds
 
 
 ; BEGIN: set_pixel
-set_pixel:
+set_pixel: (a0, a1)
+    
+    stw xxx, LEDS(t0)
 
 ; END: set_pixel
 
