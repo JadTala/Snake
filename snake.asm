@@ -36,7 +36,13 @@ main:
 
 ; BEGIN: clear_leds
 clear_leds:
+    stw zero, LEDS(zero)
 
+    addi t0, zero, 4
+    stw zero, LEDS(t0) 
+
+    addi t1, zero, 8
+    stw zero, LED(t1)
 ; END: clear_leds
 
 
