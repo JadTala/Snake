@@ -39,15 +39,48 @@ clear_leds:
     stw zero, LEDS(zero)
     stw zero, LEDS + 4 (zero) 
     stw zero, LEDS + 8 (zero) ; addi t1, zero, 8 || stw zero, LEDS(t1)
+
     ret
 ; END: clear_leds
 
 
 ; BEGIN: set_pixel
 set_pixel: (a0, a1)
-    
-    stw xxx, LEDS(t0)
+    br check0
 
+    check0:
+    cmpgeui t0, a0, 4
+    bre t0, 0, ldled0
+    bre t0, 1, check1
+
+    check1:
+    cmpgeui t0, a0, 8
+    bre t0, 0, ldled1
+    bre t0, 1, ldled2
+
+    ldled0:
+    ldw t0, LEDS (zero) ; loading correct led chunk
+    br update ; updating
+    stw LEDS (zero), t3 ; writing update
+
+    ldled1:
+    ldw t0, LEDS + 4 (zero)
+    br update
+    stw LEDS + 4 (zero), t3
+
+    ldled2:
+    ldw t0, LEDS + 8 (zero)
+    br update
+    stw LEDS + 8 (zero), t3
+
+    update:
+    addi t1, zero, 1 ; bit to turn on
+    ; bit index is 7 * a1 + a0 how to mult?
+    addi t2, ; amount to shift
+    slli t1, t1, ; shifting
+    or t3, t0, t1 ; setting pixel
+
+    ret
 ; END: set_pixel
 
 
