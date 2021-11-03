@@ -30,7 +30,10 @@ addi    sp, zero, LEDS
 ;     This procedure should never return.
 main:
     ; TODO: Finish this procedure.
-
+    call clear_leds
+    addi a0, zero, 3
+    addi a1, zero, 5
+    call set_pixel
     ret
 
 
@@ -45,40 +48,19 @@ clear_leds:
 
 
 ; BEGIN: set_pixel
-set_pixel: (a0, a1)
-    br check0
+set_pixel:
+    srli t0, a0, 2  ; leds chunk index
+    ldw t0, LEDS(t0); load leds chunk
 
-    check0:
-    cmpgeui t0, a0, 4
-    bre t0, 0, ldled0
-    bre t0, 1, check1
+    slli t1, a0, 30 ; x mod 4
+    srli t1, t1, 27 ; (x mod 4) * 8
+    add t1, t1, a1  ; (x mod 4) * 8 + y
 
-    check1:
-    cmpgeui t0, a0, 8
-    bre t0, 0, ldled1
-    bre t0, 1, ldled2
+    addi t2, zero, 1; bit to shift
+    sll t2, t2, t1  ; shifting the bit
 
-    ldled0:
-    ldw t0, LEDS (zero) ; loading correct led chunk
-    br update ; updating
-    stw LEDS (zero), t3 ; writing update
-
-    ldled1:
-    ldw t0, LEDS + 4 (zero)
-    br update
-    stw LEDS + 4 (zero), t3
-
-    ldled2:
-    ldw t0, LEDS + 8 (zero)
-    br update
-    stw LEDS + 8 (zero), t3
-
-    update:
-    addi t1, zero, 1 ; bit to turn on
-    ; bit index is 7 * a1 + a0 how to mult?
-    addi t2, ; amount to shift
-    slli t1, t1, ; shifting
-    or t3, t0, t1 ; setting pixel
+    or t0, t0, t2   ; update chunk
+    stw t0, LEDS(a0); write update
 
     ret
 ; END: set_pixel
