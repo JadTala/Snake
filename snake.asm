@@ -41,11 +41,17 @@ main:
 main_loop:
     call clear_leds
     call get_input
-    call move_snake
+	call hit_test ; if returns 2, terminate ??? which method ?
+    call coll_transition ; if 2, terminates ?, if 1 create food, if 0 then continues down
+	
+	call move_snake
     call draw_array
     call main_loop
     ret
 
+
+;   The clear_leds procedure initializes all LEDs to 0 (zero)
+;   called before drawing every new position of the snake and/or food 
 
 ; BEGIN: clear_leds
 clear_leds:
@@ -55,6 +61,10 @@ clear_leds:
     ret
 ; END: clear_leds
 
+
+;    takes two coordinates as arguments and turns on the corresponding pixel
+;   on the LED display. When this procedure turns on a pixel, it must keep the state of all the other pixels
+;   unmodified.
 
 ; BEGIN: set_pixel
 set_pixel:
@@ -95,37 +105,79 @@ create_food:
     slli t0, t0, 2
 	ldw t1, GSA(t0)
     bne t1, zero, create_food
-    addi t1, zero, 5
-	stw t1, GSA(t0)
+    addi t1, zero, 5 ; checkpoint
+	stw t1, GSA(t0) ; storing 5 (t1) at GSA(t0)
     ret
 ; END: create_food
 
 
+; tests whether or not the new element being drawn as the snake’s head collides with the
+; screen boundary, the food, or the snake’s own body
+; If there is a collision with the food, the procedure returns 1 indicating that the score needs to be incremented.
+; If there is a collision with the screen boundary or the snake’s body, the procedure returns 2 indicating the end of the game. 
+; If there is no collision, the procedure returns 0
+
 ; BEGIN: hit_test
 hit_test:
+call get_input ; address of potential new head stored in t4, {address of food is GSA(t0)} if GSA(t4) = 5 then collision with food
+ldw t0, GSA(t4)
 
-; END: hit_test
+addi t1, zero, 5
+beq t0, t1, coll_food
+
+addi t1, zero, 1
+beq t0, t1, coll_screen_body
+addi t1, t1, 2
+beq t0, t1, coll_screen_body
+addi t1, zero, 3
+beq t0, t1, coll_screen_body
+addi t1, zero, 4
+beq t0, t1, coll_screen_body
+
+addi t1, zero, 4116
+blt t0, t1, coll_screen_body ; < 0x1014
+addi t1, zero, 4504
+bge t0, t1, coll_screen_body ; >= 0x1198
+
+addi v0, zero, 0
+; END : hit_test
+
+coll_food:
+addi v0, zero, 1
+
+coll_screen_body:
+addi v0, zero, 2
+
+coll_transition:
+addi t1, zero, 1
+beq v0, t1, create_food
+
+addi t1, zero, 2 ; should terminate the game
+
+; addi t1, zero, 0 not necessary, we can leave the rest after the call of this method
 
 
 ; BEGIN: get_input
 get_input:
-	ldw t1, BUTTONS+4(zero) ; get edgecapture
+	ldw t1, BUTTONS+4(zero) ; get edgecapture and store into t1
 	addi t5, zero, 0
-	bne t1, t5, input_update ; update only if changed
-
+	bne t1, t5, input_update ; update only if button was pressed
 	ret
 
 input_update:
-    ldw t2, HEAD_X(zero) ; get head x
-	ldw t3, HEAD_Y(zero) ; get head y
-	slli t2, t2, 5 ; 32x
-	slli t3, t3, 2 ; 4y
-	add t4, t2, t3 ; 32x + 4y
-	addi t4, t4, GSA ; head GSA address
-	andi t1, t1, 15	; ignore checkpoint button
+    ldw t2, HEAD_X(zero) ; get head x and load it into t2
+	ldw t3, HEAD_Y(zero) ; get head y and load it into t3
+	
+	slli t2, t2, 5 ; 32x - shifting left by 5 bits is same as doing value * 2^5
+	slli t3, t3, 2 ; 4y - shifting left by 2 bits -> val of t3 * 2^2
+	add t4, t2, t3 ; 32x + 4y and store in t4
+	addi t4, t4, GSA ; head GSA address and add with t4 - side note: GSA contains 96 x 32-bit words :: 0x1014 - 0x1197 / 4116 - 4503 + 1 = 388 values between -> 97 values taking 4 each 
+	
+	andi t1, t1, 15	; ignore checkpoint button - value between 0-4 AND 15 will result in 0
 	stw t1, 0(t4) ; update
+
 	and t1, t1, zero ; reset edgecapture
-	stw t1, BUTTONS+4(zero)
+	stw t1, BUTTONS+4(zero) ; store if something is stil pressed
 	ret
 ; END: get_input
 
@@ -159,12 +211,12 @@ post_draw:
 	
 stack_draw_array:
 	addi sp, sp, -12 ; pop 3 times
-	stw ra, 0(sp)
-	stw a1, 4(sp)
+	stw ra, 0(sp) ; return address
+	stw a1, 4(sp) ; register arguments
 	stw a0, 8(sp)
 	addi a0, t0, 0
 	addi a1, t1, 0
-	call set_pixel
+	call set_pixel ; will take as argument register a0 and register a1
 	addi t0,a0,0
 	addi t1,a1,0
 	ldw a0, 8(sp)
@@ -181,13 +233,16 @@ move_snake:
 	ldw t1, HEAD_Y(zero)
 	ldw t4, TAIL_X(zero)
 	ldw t5, TAIL_Y(zero)
-	slli t2, t0, 3
+
+	slli t2, t0, 3 ; head x * 2^3
 	slli t6, t4, 3
 	add t2, t2, t1
 	slli t2, t2, 2 
+
 	add t6, t6, t5
 	slli t6, t6, 2
 	ldw t3, GSA(t2)
+
 	addi t7, zero, 1
 	beq t3, t7, head_left
 	addi t7, t7, 1
