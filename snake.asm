@@ -36,7 +36,6 @@ main:
     addi t0, zero, 4
     stw t0, GSA(zero)
     call main_loop
-
     ret
 
 main_loop:
@@ -45,7 +44,6 @@ main_loop:
     call move_snake
     call draw_array
     call main_loop
-
     ret
 
 
@@ -54,7 +52,6 @@ clear_leds:
     stw zero, LEDS(zero)
     stw zero, LEDS + 4 (zero) 
     stw zero, LEDS + 8 (zero)
-
     ret
 ; END: clear_leds
 
@@ -63,17 +60,13 @@ clear_leds:
 set_pixel:
     srli t0, a0, 2  ; leds chunk index
     ldw t0, LEDS(t0); load leds chunk
-
     slli t1, a0, 30 ; x mod 4
     srli t1, t1, 27 ; (x mod 4) * 8
     add t1, t1, a1  ; (x mod 4) * 8 + y
-
     addi t2, zero, 1; bit to shift
     sll t2, t2, t1  ; shifting the bit
-
     or t0, t0, t2   ; update chunk
     stw t0, LEDS(a0); write update
-
     ret
 ; END: set_pixel
 
@@ -95,21 +88,15 @@ create_food:
     addi t0, zero, 1
     stw t0, RANDOM_NUM(zero)
     ldw	t0, RANDOM_NUM(zero)
-
     andi t0, t0, 255
-
     addi t1, zero, 96
 	blt t0, zero, create_food
 	bge t0, t1, create_food
-
     slli t0, t0, 2
 	ldw t1, GSA(t0)
-
     bne t1, zero, create_food
-
     addi t1, zero, 5
 	stw t1, GSA(t0)
-
     ret
 ; END: create_food
 
@@ -124,27 +111,22 @@ hit_test:
 get_input:
     ldw t0, BUTTONS(zero)
 	ldw t1, BUTTONS+4(zero)
-
 	addi t5, t5, 31
 	bne t0, t5, input_update ; update only if changed
-	
+
 	ret
 
 input_update:
     ldw t2, HEAD_X(zero) ; get head x
 	ldw t3, HEAD_Y(zero) ; get head y
-	
 	slli t2, t2, 5 ; 32x
 	slli t3, t3, 2 ; 4y
 	add t4, t2, t3 ; 32x + 4y
 	addi t4, t4, GSA ; head GSA address
-	
 	andi t1, t1, 15	; ignore checkpoint button
-		
 	stw t1, 0(t4) ; update
 	and t1, t1, zero ; reset edgecapture
 	stw t0, BUTTONS+4(zero)
-	
 	ret
 ; END: get_input
 
@@ -181,20 +163,15 @@ stack_draw_array:
 	stw ra, 0(sp)
 	stw a1, 4(sp)
 	stw a0, 8(sp)
-
 	addi a0, t0, 0
 	addi a1, t1, 0
-	
 	call set_pixel
-
 	addi t0,a0,0
 	addi t1,a1,0
-
 	ldw a0, 8(sp)
 	ldw a1, 4(sp)
 	ldw ra, 0(sp)
 	addi sp, sp, 12
-
     jmpi post_draw
 ; END: draw_array
 
@@ -212,7 +189,6 @@ move_snake:
 	add t6, t6, t5
 	slli t6, t6, 2
 	ldw t3, GSA(t2)
-
 	addi t7, zero, 1
 	beq t3, t7, head_left
 	addi t7, t7, 1
