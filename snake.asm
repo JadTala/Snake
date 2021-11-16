@@ -109,10 +109,9 @@ hit_test:
 
 ; BEGIN: get_input
 get_input:
-    ldw t0, BUTTONS(zero)
-	ldw t1, BUTTONS+4(zero)
-	addi t5, t5, 31
-	bne t0, t5, input_update ; update only if changed
+	ldw t1, BUTTONS+4(zero) ; get edgecapture
+	addi t5, zero, 0
+	bne t1, t5, input_update ; update only if changed
 
 	ret
 
@@ -126,7 +125,7 @@ input_update:
 	andi t1, t1, 15	; ignore checkpoint button
 	stw t1, 0(t4) ; update
 	and t1, t1, zero ; reset edgecapture
-	stw t0, BUTTONS+4(zero)
+	stw t1, BUTTONS+4(zero)
 	ret
 ; END: get_input
 
