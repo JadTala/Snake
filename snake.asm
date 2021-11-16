@@ -192,7 +192,7 @@ move_snake:
 	addi t7, zero, 1
 	beq t3, t7, head_left
 	addi t7, t7, 1
-	beq t3, t7, head_right
+	beq t3, t7, head_up
 	addi t7, t7, 1		
 	beq t3, t7, head_down
 	addi t7, t7, 1
