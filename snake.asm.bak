@@ -84,51 +84,25 @@ set_pixel:
 ; BEGIN: display_score
 display_score:
 ldw t0, SCORE(zero); get the current score (in decimal representation) on the display, located at 0x1010 -> 4112
-addi sp, sp, -4
-stw ra, 0(sp)
 
 ; first digit
 addi t3, zero, 0 ;; manque comment trouver les digits, millier, centaine, dizaine, unité
-addi t1, zero, 0
 call disp
 ; second digit
 addi t3, zero, 1   ; compter combiend de fois il faut soustraire 10 jusqu'à trouver des unités
-addi t1, zero, 0
 call disp
 ; third digit
 addi t3, zero, 2
-addi t1, zero, 0
-ldw t6, 0(t0)
-call third
 call disp
 ; fourth - las digit
 addi t3, zero, 3
-ldw t1, 0(t0)
-call fourth
 call disp
-
-ldw ra, 0(sp)
-addi sp, sp, 4
-ret
 ; END: display_score
 
 disp:
 slli t1, t1, 2 ; shift by 2
 ldw t6, digit_map(t1)
 stw t6, SEVEN_SEGS(t3)
-
-third:
-addi t6, t0, -10
-addi t4, zero, 10
-addi t1, t1, 1
-blt t6, t4, end ; at the end, t1 is the dizaine digit
-br third
-
-fourth:
-addi t1, t0, -10
-addi t4, zero, 10
-blt t1, t4, end ; at the end, t1 is the unit digit
-br fourth
 
 
 
@@ -199,7 +173,7 @@ ret
 
 score_food_incr:
 ldw t0, SCORE(zero)
-addi t0, t0, 1
+addi t0, t0, 1 ; TODO 
 stw t0, SCORE(zero)
 beq v0, t1, create_food
 ret
@@ -207,7 +181,6 @@ ret
 coll_transition:
 addi t1, zero, 1
 beq v0, t1, score_food_incr
-ret
 
 addi t1, zero, 2 ; should terminate the game
 beq v0, t1, main ; -- OR should we branch to init_game ???? ask TA
@@ -410,22 +383,23 @@ restore_checkpoint:
 
 ; BEGIN: blink_score
 blink_score:
-addi sp, sp, -4 ; allouer emplacement dans stack
+addi sp, sp, -4 ; allouer emplacement dans stack, push
 stw ra, 0(sp)
 
 call clear_leds
-call wait_procedure
+call wait
 call display_score
-call wait_procedure
+call wait
 call clear_leds
-call wait_procedure
+call wait
 call display_score
-call wait_procedure
+call wait
 call clear_leds
-call wait_procedure
+call wait
 call display_score
 
-ldw ra, 0(sp)
+
+ldw ra, 0(sp)	; load the ra pour avoir le bon adresse pour ret
 addi sp, sp, 4
 ret
 ; END: blink_score
@@ -434,11 +408,12 @@ ret
 wait_procedure:
 addi t7, zero, 49999999
 call wait_aux
-ret ; stack pointer
-; END: wait_procedure
+ret
+; stack pointer
 
+; END: wait_procedure
 wait_aux:
-addi t7, t7, -1
+sub t7, t7, 1
 addi t6, zero, 0
 beq t7, t6, end
 br wait_aux
