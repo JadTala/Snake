@@ -29,12 +29,11 @@ addi    sp, zero, LEDS
 ; return values
 ;     This procedure should never return.
 main:
-    stw zero, HEAD_X(zero)
-    stw zero, HEAD_Y(zero)
-    stw zero, TAIL_X(zero)
-    stw zero, TAIL_Y(zero)
-    addi t0, zero, 4
-    stw t0, GSA(zero)
+ 	; Checkpoint initialization, setting to 0 before the game is initialized
+	stw zero, CP_VALID(zero)
+	; Initializing the game
+    call init_game
+	; launching the game / main loop
     call main_loop
     ret
 
@@ -135,7 +134,22 @@ br fourth
 
 ; BEGIN: init_game
 init_game:
+	; previously in main
+	; snake of length one, appearing at the top left corner of the LED screen and moving towards right
+	stw zero, HEAD_X(zero)
+    stw zero, HEAD_Y(zero)
+    stw zero, TAIL_X(zero)
+    stw zero, TAIL_Y(zero)
+    addi t0, zero, 4
+	stw t0, GSA(zero)
 
+	; section 7 in addition :
+	; food is appearing at a random location and score is all zeros
+	call create_food
+	ldw t0, SCORE(zero)
+	sub t0, t0, t0 ; t0 - t0 should give 0 
+	stw t0, SCORE(zero)
+	ret
 ; END: init_game
 
 
@@ -153,6 +167,9 @@ create_food:
     bne t1, zero, create_food
     addi t1, zero, 5 ; checkpoint
 	stw t1, GSA(t0) ; storing 5 (t1) at GSA(t0)
+
+	addi v0, zero, 0 ; else, we store 0 in v0 to say everything to put the v0 value back from 2 to 0 to say there is no more collision
+
     ret
 ; END: create_food
 
@@ -168,11 +185,11 @@ hit_test:
 call get_input ; address of potential new head stored in t4, {address of food is GSA(t0)} if GSA(t4) = 5 then collision with food
 ldw t0, GSA(t4)
 
-addi t1, zero, 5
-beq t0, t1, coll_food
+addi t1, zero, 5	; init t1 at 5
+beq t0, t1, coll_food ; if t0 (position of head) = 5 then there is a food in front
 
 addi t1, zero, 1
-beq t0, t1, coll_screen_body
+beq t0, t1, coll_screen_body ; if t0 (position of head) = 1, 2, 3, 4 / there is a body in front
 addi t1, t1, 2
 beq t0, t1, coll_screen_body
 addi t1, zero, 3
@@ -181,27 +198,27 @@ addi t1, zero, 4
 beq t0, t1, coll_screen_body
 
 addi t1, zero, 4116
-blt t0, t1, coll_screen_body ; < 0x1014
+blt t0, t1, coll_screen_body ; < 0x1014 ; there is a collision with the screen
 addi t1, zero, 4504
 bge t0, t1, coll_screen_body ; >= 0x1198
 
-addi v0, zero, 0
+addi v0, zero, 0 ; else, we store 0 in v0 to say everything is fine
 ret
 ; END : hit_test
 
 coll_food:
-addi v0, zero, 1
+addi v0, zero, 1 ; 1 to say collision with food -> ! set v0 back to 0
 ret
 
 coll_screen_body:
-addi v0, zero, 2
+addi v0, zero, 2 ; 2 to say collision with body or border screen
 ret
 
 score_food_incr:
 ldw t0, SCORE(zero)
 addi t0, t0, 1
 stw t0, SCORE(zero)
-beq v0, t1, create_food
+beq v0, t1, create_food ; TODO peut-être faire un stack dans create_food ?
 ret
 
 coll_transition:
@@ -210,7 +227,7 @@ beq v0, t1, score_food_incr
 ret
 
 addi t1, zero, 2 ; should terminate the game
-beq v0, t1, main ; -- OR should we branch to init_game ???? ask TA
+beq v0, t1, init_game ; -- OR should we branch to init_game ???? ask TA
 ret
 ; addi t1, zero, 0 not necessary, we can leave the rest after the call of this method
 
@@ -396,16 +413,127 @@ move_snake:
 	ret
 ; END: move_snake
 
+
 ; BEGIN: save_checkpoint
 save_checkpoint:
+; as always every time we have branches we need to store the ret value into a stack
+addi sp, sp, -4 ; allouer emplacement dans stack
+stw ra, 0(sp)
 
+ldw t1, SCORE(zero)
+
+addi t0, zero, 10 ; hard coded is simpler, since the score cannot go over 96, creating loops would be bothersome
+beq t0, t1, act_CP_Valid
+addi t0, zero, 20
+beq t0, t1, act_CP_Valid
+addi t0, zero, 30
+beq t0, t1, act_CP_Valid
+addi t0, zero, 40
+beq t0, t1, act_CP_Valid
+addi t0, zero, 50
+beq t0, t1, act_CP_Valid
+addi t0, zero, 60
+beq t0, t1, act_CP_Valid
+addi t0, zero, 70
+beq t0, t1, act_CP_Valid
+addi t0, zero, 80
+beq t0, t1, act_CP_Valid
+addi t0, zero, 90
+beq t0, t1, act_CP_Valid
+addi t0, zero, 100
+
+; But also save the current game State to the checkpoint memory region
+addi t0, zero, 1
+ldw t1, CP_VALID(zero)
+beq t0, t1, copy_memory_CP ; TODO here there is a problem, while score is at mult. of 10, the position is stored at every move since the score hasn't changed (case where we are in an impossible case, even restoring wouldn't help since it will be the last position before the collision)
+
+ldw ra, 0(sp) ; reloading the stack
+addi sp, sp, 4
+
+ret
 ; END: save_checkpoint
+
+; BEGIN: act_CP_Valid
+act_CP_Valid:
+addi t0, zero, 1
+stw t0, CP_VALID(zero) ; setting CP_VALID to one
+ret
+; END: act_CP_Valid
 
 
 ; BEGIN: restore_checkpoint
 restore_checkpoint:
+; if checkpoint button is pressed, if pressed, check
+addi t0, zero, 5 ; TODO CHECK THIS LINE OF CODE, IM NOT SURE HOW WE SEE IF THE BUTTON CHECKPOINT has been pressed : get edgecapture and store into t1
 
+; as always every time we have branches or calls we need to store the ret value into a stack
+addi sp, sp, -4 ; allouer emplacement dans stack
+stw ra, 0(sp)
+
+ldw t5, BUTTONS+5(zero)
+beq t5, t0, check_CP ; TODO maybe should we modify the stack pointer in check_CP to go further ???
+
+ldw ra, 0(sp)  ; reloading the stack
+addi sp, sp, 4
+
+; if not pressed then return back
+ret
 ; END: restore_checkpoint
+
+; BEGIN: check_CP
+check_CP:
+addi t0, zero, 0
+ldw t5, CP_VALID(zero)
+beq t0, t5, end ; if not valid, we break out of this process and don't look further down
+
+; as always every time we have branches or calls we need to store the ret value into a stack
+addi sp, sp, -4 ; allouer emplacement dans stack
+stw ra, 0(sp)
+
+call load_memory_CP
+
+ldw ra, 0(sp)  ; reloading the stack
+addi sp, sp, 4
+
+ret
+; END: check_CP
+
+
+; BEGIN: copy_memory_CP
+copy_memory_CP:
+; copying current into check point
+ldw t3, HEAD_X(zero)
+stw t3, CP_HEAD_X(zero) ; Snake head's position on x
+ldw t3, HEAD_Y(zero)
+stw t3, CP_HEAD_Y(zero)
+ldw t3, TAIL_X(zero)
+stw t3, CP_TAIL_X(zero)
+ldw t3, TAIL_Y(zero)
+stw t3, CP_TAIL_Y(zero)
+ldw t3, SCORE(zero)
+stw t3, CP_SCORE(zero)
+ldw t3, GSA(zero)
+stw t3, CP_GSA(zero)
+ret
+; END: copy_memory_CP
+
+; BEGIN: load_memory
+load_memory_CP:
+; copying current into check point
+ldw t3, CP_HEAD_X(zero)
+stw t3, HEAD_X(zero) ; Snake head's position on x
+ldw t3, CP_HEAD_Y(zero)
+stw t3, HEAD_Y(zero)
+ldw t3, CP_TAIL_X(zero)
+stw t3, TAIL_X(zero)
+ldw t3, CP_TAIL_Y(zero)
+stw t3, TAIL_Y(zero)
+ldw t3, CP_SCORE(zero)
+stw t3, SCORE(zero)
+ldw t3, CP_GSA(zero)
+stw t3, GSA(zero)
+ret
+; END: load_memory_CP
 
 
 ; BEGIN: blink_score
@@ -458,3 +586,8 @@ digit_map:
 .word 0xE0 ; 7
 .word 0xFE ; 8
 .word 0xF6 ; 9
+
+; TODO - check left right up down constraint, shouldnt be able to go left while going right
+
+; TODO - However, if the checkpoint button was pressed together with any other button, this procedure should return that
+; only the checkpoint button was pressed.
