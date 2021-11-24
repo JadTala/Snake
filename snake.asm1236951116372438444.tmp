@@ -608,23 +608,33 @@ addi sp, sp, 4
 ret
 ; END: blink_score
 
-; BEGIN: wait_procedure ; TODO LE NOM
+; BEGIN: wait_procedure
 wait_procedure:
+addi sp, sp, -4 ; allouer emplacement dans stack
+stw ra, 0(sp)
 
-addi t7, zero, 1
-slli t7, t7, 21
-addi t6, zero, 0
+addi t0,zero, 3;0xFFF
+addi t1, zero, 1;0x200
+call wait_aux
 
-wait_loop:
-addi t7, t7, -1
-bne t7, t6, wait_loop
-
-ret
+ldw ra, 0(sp)
+addi sp, sp, 4
+ret ; stack pointer ; bug ici
 ; END: wait_procedure
 
-end: ; TODO ATTENTION GRADER
+wait_aux:
+addi t0, t0, -1
+beq t0, zero, wait_decrement
+wait_check:
+bne t1, zero, wait_aux
 ret
+wait_decrement:
+addi t1, t1, -1
+addi t0, zero, 0xFFF
+jmpi wait_check
 
+end:
+ret
 
 
 digit_map:
