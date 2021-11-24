@@ -145,7 +145,7 @@ init_game:
 
 	; section 7 in addition :
 	; food is appearing at a random location and score is all zeros
-	call create_food
+	; call create_food ; TODO enlever le commentaire
 	ldw t0, SCORE(zero)
 	sub t0, t0, t0 ; t0 - t0 should give 0 
 	stw t0, SCORE(zero)
@@ -182,20 +182,46 @@ create_food:
 
 ; BEGIN: hit_test
 hit_test:
-call get_input ; address of potential new head stored in t4, {address of food is GSA(t0)} if GSA(t4) = 5 then collision with food
-ldw t0, GSA(t4)
+
+addi sp, sp, -4 ; allouer emplacement dans stack
+stw ra, 0(sp)
+
+; call get_input ; address of potential new head stored in t4, {address of food is GSA(t0)} if GSA(t4) = 5 then collision with food
+
+ldw t1, HEAD_X(zero)
+srli t1, t1, 27 ; (x) * 8
+ldw t7, HEAD_Y(zero)
+add t1, t1, t7  ; (x mod 4) * 8 + y
+
+ldw t2, GSA(t1)
+; 4 cases
+; right
+addi t6, zero, 1
+beq t2, t6, hit_left
+
+addi t6, t6, 1
+beq t2, t6, hit_up
+
+addi t6, t6, 1
+beq t2, t6, hit_down
+
+addi t6, t6, 1
+beq t2, t6, hit_right
+
+; after collision testing, value of position of direction head + 1 move is int t0
 
 addi t1, zero, 5	; init t1 at 5
-beq t0, t1, coll_food ; if t0 (position of head) = 5 then there is a food in front
+ldw t7, GSA(t0)
+beq t7, t1, coll_food ; if t0 (position of head) = 5 then there is a food in front
 
 addi t1, zero, 1
-beq t0, t1, coll_screen_body ; if t0 (position of head) = 1, 2, 3, 4 / there is a body in front
-addi t1, t1, 2
-beq t0, t1, coll_screen_body
-addi t1, zero, 3
-beq t0, t1, coll_screen_body
-addi t1, zero, 4
-beq t0, t1, coll_screen_body
+beq t7, t1, coll_screen_body ; if t0 (position of head) = 1, 2, 3, 4 / there is a body in front
+addi t1, t1, 1
+beq t7, t1, coll_screen_body
+addi t1, t1, 1
+beq t7, t1, coll_screen_body
+addi t1, t1, 1
+beq t7, t1, coll_screen_body
 
 addi t1, zero, 4116
 blt t0, t1, coll_screen_body ; < 0x1014 ; there is a collision with the screen
@@ -203,8 +229,31 @@ addi t1, zero, 4504
 bge t0, t1, coll_screen_body ; >= 0x1198
 
 addi v0, zero, 0 ; else, we store 0 in v0 to say everything is fine
+
+
+ldw ra, 0(sp) ; reload ret value from stack
+addi sp, sp, 4
 ret
 ; END : hit_test
+
+
+hit_left:
+addi t0, t1, -8 ; t2 is the position of head on the board
+ret
+
+hit_up:
+addi t0, t1, -1 ; t2 is the position of head on the board
+ret
+
+hit_down:
+addi t0, t1, 1 ; t2 is the position of head on the board
+ret
+
+hit_right:
+addi t0, t1, 8 ; t2 is the position of head on the board
+ret
+
+
 
 coll_food:
 addi v0, zero, 1 ; 1 to say collision with food -> ! set v0 back to 0
