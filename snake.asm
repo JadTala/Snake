@@ -560,16 +560,22 @@ ret
 
 ; BEGIN: wait_procedure
 wait_procedure:
-addi t7, zero, 49999999
+addi t0,zero, 0xFFF
+addi t1, zero, 0x200
 call wait_aux
 ret ; stack pointer
 ; END: wait_procedure
 
 wait_aux:
-addi t7, t7, -1
-addi t6, zero, 0
-beq t7, t6, end
-br wait_aux
+addi t0, t0, -1
+beq t0, zero, wait_decrement
+wait_check:
+bne t1, zero, wait_aux
+ret
+wait_decrement:
+addi t1, t1, -1
+addi t0, zero, 0xFFF
+jmpi wait_check
 
 end:
 ret
