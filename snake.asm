@@ -272,14 +272,28 @@ beq v0, t1, create_food ; TODO peut-être faire un stack dans create_food ?
 ret
 
 coll_transition:
+; as always every time we have branches or calls we need to store the ret value into a stack
+addi sp, sp, -4 ; allouer emplacement dans stack
+stw ra, 0(sp)
+
 addi t1, zero, 1
 beq v0, t1, score_food_incr
-ret
 
-addi t1, zero, 2 ; should terminate the game
-beq v0, t1, init_game ; -- OR should we branch to init_game ???? ask TA
+addi t1, zero, 2 ; should terminate the game - collision with border or with body
+beq v0, t1, stack_prob ; 
+
+ldw ra, 0(sp)  ; reloading the stack ; TODO demander assistant s'il y aura un problème si
+addi sp, sp, 4
 ret
 ; addi t1, zero, 0 not necessary, we can leave the rest after the call of this method
+
+stack_prob: ; to do before calling init game
+ldw ra, 0(sp)  ; reloading the stack ; TODO demander assistant s'il y aura un problème si
+addi sp, sp, 4
+
+addi t1, zero, 2 ; should terminate the game - collision with border or with body
+beq v0, t1, init_game ; after setting the stack back to where it was, should go to init game as usual
+
 
 
 ; BEGIN: get_input
@@ -643,3 +657,11 @@ digit_map:
 
 ; TODO - However, if the checkpoint button was pressed together with any other button, this procedure should return that
 ; only the checkpoint button was pressed.
+
+
+; ; as always every time we have branches or calls we need to store the ret value into a stack
+; addi sp, sp, -4 ; allouer emplacement dans stack
+; stw ra, 0(sp)
+
+; ldw ra, 0(sp)  ; reloading the stack
+; addi sp, sp, 4
