@@ -635,7 +635,7 @@ ret
 ; BEGIN: wait_procedure ; TODO LE NOM
 wait_procedure:
 addi t7, zero, 1
-slli t7, t7, 21
+slli t7, t7, 22
 addi t6, zero, 0
 
 wait_loop:
