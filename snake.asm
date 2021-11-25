@@ -43,11 +43,42 @@ main_loop:
     call get_input
 	call hit_test ; if returns 2, terminate ??? which method ?
     call coll_transition ; if 2, terminates ?, if 1 create food, if 0 then continues down
-	
+	; TODO, do we have to put coll_transition inside hit_test or not ?
 	call move_snake
     call draw_array
     call main_loop
     ret
+
+coll_transition:
+; as always every time we have branches or calls we need to store the ret value into a stack
+addi sp, sp, -4 ; allouer emplacement dans stack
+stw ra, 0(sp)
+
+addi t1, zero, 1
+beq v0, t1, score_food_incr
+beq v0, t1, create_food
+
+addi t1, zero, 2 ; should terminate the game - collision with border or with body
+beq v0, t1, stack_prob ; 
+
+ldw ra, 0(sp)  ; reloading the stack ; TODO demander assistant s'il y aura un problème si
+addi sp, sp, 4
+ret
+; addi t1, zero, 0 not necessary, we can leave the rest after the call of this method
+
+score_food_incr:
+ldw t0, SCORE(zero)
+addi t0, t0, 1
+stw t0, SCORE(zero)
+ret
+
+stack_prob: ; to do before calling init game
+ldw ra, 0(sp)  ; reloading the stack ; TODO demander assistant s'il y aura un problème si
+addi sp, sp, 4
+
+addi t1, zero, 2 ; should terminate the game - collision with border or with body
+beq v0, t1, init_game ; after setting the stack back to where it was, should go to init game as usual
+
 
 
 ;   The clear_leds procedure initializes all LEDs to 0 (zero)
@@ -110,7 +141,6 @@ call disp
 ldw ra, 0(sp)
 addi sp, sp, 4
 ret
-; END: display_score
 
 disp:
 slli t1, t1, 2 ; shift by 2
@@ -121,15 +151,18 @@ third:
 addi t6, t0, -10
 addi t4, zero, 10
 addi t1, t1, 1
-blt t6, t4, end ; at the end, t1 is the dizaine digit
+blt t6, t4, end1 ; at the end, t1 is the dizaine digit
 br third
 
 fourth:
 addi t1, t0, -10
 addi t4, zero, 10
-blt t1, t4, end ; at the end, t1 is the unit digit
+blt t1, t4, end1 ; at the end, t1 is the unit digit
 br fourth
 
+end1: 
+ret
+; END: display_score
 
 
 
@@ -150,6 +183,9 @@ init_game:
 	ldw t0, SCORE(zero)
 	sub t0, t0, t0 ; t0 - t0 should give 0 
 	stw t0, SCORE(zero)
+
+	addi v0, zero, 0 ; setting v0 back to 0, imagine collision with border previously, would launch infinitely
+
 	ret
 ; END: init_game
 
@@ -198,7 +234,7 @@ ldw t2, GSA(t1)
 ; 4 cases
 ; right
 addi t6, zero, 1
-beq t2, t6, hit_left
+beq t2, t6, hit_left; if current head's direction is left, we look at what is one case to the left of head
 
 addi t6, t6, 1
 beq t2, t6, hit_up
@@ -209,7 +245,7 @@ beq t2, t6, hit_down
 addi t6, t6, 1
 beq t2, t6, hit_right
 
-; after collision testing, value of position of direction head + 1 move is int t0
+; after collision testing, value of position of direction head + 1 move is in t0
 
 addi t1, zero, 5	; init t1 at 5
 ldw t7, GSA(t0)
@@ -235,26 +271,22 @@ addi v0, zero, 0 ; else, we store 0 in v0 to say everything is fine
 ldw ra, 0(sp) ; reload ret value from stack
 addi sp, sp, 4
 ret
-; END : hit_test
-
 
 hit_left:
-addi t0, t1, -8 ; t2 is the position of head on the board
+addi t0, t1, -8 ; t1 is the position of head on the board
 ret
 
 hit_up:
-addi t0, t1, -1 ; t2 is the position of head on the board
+addi t0, t1, -1 ; t1 is the position of head on the board
 ret
 
 hit_down:
-addi t0, t1, 1 ; t2 is the position of head on the board
+addi t0, t1, 1 ; t1 is the position of head on the board
 ret
 
 hit_right:
-addi t0, t1, 8 ; t2 is the position of head on the board
+addi t0, t1, 8 ; t1 is the position of head on the board
 ret
-
-
 
 coll_food:
 addi v0, zero, 1 ; 1 to say collision with food -> ! set v0 back to 0
@@ -264,35 +296,7 @@ coll_screen_body:
 addi v0, zero, 2 ; 2 to say collision with body or border screen
 ret
 
-score_food_incr:
-ldw t0, SCORE(zero)
-addi t0, t0, 1
-stw t0, SCORE(zero)
-beq v0, t1, create_food ; TODO peut-être faire un stack dans create_food ?
-ret
-
-coll_transition:
-; as always every time we have branches or calls we need to store the ret value into a stack
-addi sp, sp, -4 ; allouer emplacement dans stack
-stw ra, 0(sp)
-
-addi t1, zero, 1
-beq v0, t1, score_food_incr
-
-addi t1, zero, 2 ; should terminate the game - collision with border or with body
-beq v0, t1, stack_prob ; 
-
-ldw ra, 0(sp)  ; reloading the stack ; TODO demander assistant s'il y aura un problème si
-addi sp, sp, 4
-ret
-; addi t1, zero, 0 not necessary, we can leave the rest after the call of this method
-
-stack_prob: ; to do before calling init game
-ldw ra, 0(sp)  ; reloading the stack ; TODO demander assistant s'il y aura un problème si
-addi sp, sp, 4
-
-addi t1, zero, 2 ; should terminate the game - collision with border or with body
-beq v0, t1, init_game ; after setting the stack back to where it was, should go to init game as usual
+; END : hit_test
 
 
 
@@ -515,14 +519,14 @@ ldw ra, 0(sp) ; reloading the stack
 addi sp, sp, 4
 
 ret
-; END: save_checkpoint
 
-; BEGIN: act_CP_Valid
 act_CP_Valid:
 addi t0, zero, 1
 stw t0, CP_VALID(zero) ; setting CP_VALID to one
 ret
-; END: act_CP_Valid
+
+
+; END: save_checkpoint
 
 
 ; BEGIN: restore_checkpoint
@@ -542,13 +546,11 @@ addi sp, sp, 4
 
 ; if not pressed then return back
 ret
-; END: restore_checkpoint
 
-; BEGIN: check_CP
 check_CP:
 addi t0, zero, 0
 ldw t5, CP_VALID(zero)
-beq t0, t5, end ; if not valid, we break out of this process and don't look further down
+beq t0, t5, end2 ; if not valid, we break out of this process and don't look further down
 
 ; as always every time we have branches or calls we need to store the ret value into a stack
 addi sp, sp, -4 ; allouer emplacement dans stack
@@ -560,7 +562,13 @@ ldw ra, 0(sp)  ; reloading the stack
 addi sp, sp, 4
 
 ret
-; END: check_CP
+
+end2: ; TODO ATTENTION GRADER
+ret
+
+; END: restore_checkpoint
+
+
 
 
 ; BEGIN: copy_memory_CP
@@ -620,11 +628,12 @@ call display_score
 ldw ra, 0(sp)
 addi sp, sp, 4
 ret
+
+ret
 ; END: blink_score
 
 ; BEGIN: wait_procedure ; TODO LE NOM
 wait_procedure:
-
 addi t7, zero, 1
 slli t7, t7, 21
 addi t6, zero, 0
@@ -634,6 +643,7 @@ addi t7, t7, -1
 bne t7, t6, wait_loop
 
 ret
+		; just in case reputing this there TODO verify with an assistant - do we have to put it again in blink_score ?
 ; END: wait_procedure
 
 end: ; TODO ATTENTION GRADER
