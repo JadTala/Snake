@@ -38,9 +38,9 @@ main:
     ret
 
 main_loop:
-    call draw_array
+    call draw_array ; REMMM
 	call display_score
-	call wait ; so it is "fluent"
+	call wait ; REMMM ; so it is "fluent"
 	call clear_leds
     call get_input
 	call hit_test ; if returns 2, terminate ??? which method ?
@@ -78,7 +78,7 @@ ldw ra, 0(sp)  ; reloading the stack ; TODO demander assistant s'il y aura un pr
 addi sp, sp, 4
 
 addi t1, zero, 2 ; should terminate the game - collision with border or with body
-beq v0, t1, init_game ; after setting the stack back to where it was, should go to init game as usual
+beq v0, t1, main ; after setting the stack back to where it was, should go to init game as usual // change, branch to main because otherwise ret of init game -> skip until move snake in main loop
 
 
 
@@ -130,7 +130,7 @@ call disp
 ; third digit
 addi t3, zero, 2
 addi t1, zero, 0
-ldw t6, 0(t0)
+ldw t6, 0(t0) ; in t5 we have the score
 call third
 call disp
 ; fourth - las digit
@@ -147,17 +147,19 @@ disp:
 slli t1, t1, 2 ; shift by 2
 ldw t6, digit_map(t1)
 stw t6, SEVEN_SEGS(t3)
+ret
 
 third:
 addi t6, t0, -10
 addi t4, zero, 10
-addi t1, t1, 1
-blt t6, t4, end_disp ; at the end, t1 is the dizaine digit
+addi t1, t1, 1 ; adding in t1
+blt t6, t4, end_disp ; at the end we break out of loop when t6 = t4 = 10 t1 is the dizaine digit
 br third
 
 fourth:
 addi t1, t0, -10
 addi t4, zero, 10
+blt t1, t4, end_disp
 br fourth
 
 end_disp: 
@@ -167,9 +169,21 @@ ret
 
 
 ; BEGIN: init_game
-init_game:
+init_game: ; TODO réinitialiser la GSA -> tous les remettre à 0
+
 	; previously in main
 	; snake of length one, appearing at the top left corner of the LED screen and moving towards right
+	
+	; ; as always every time we have branches or calls we need to store the ret value into a stack
+	addi sp, sp, -4 ; allouer emplacement dans stack
+	stw ra, 0(sp)
+
+	addi t0, zero, 95 ; since 0-95 = 96 values
+	call resetGSA
+
+
+	follow:
+
 	stw zero, HEAD_X(zero)
     stw zero, HEAD_Y(zero)
     stw zero, TAIL_X(zero)
@@ -186,7 +200,16 @@ init_game:
 
 	addi v0, zero, 0 ; setting v0 back to 0, imagine collision with border previously, would launch infinitely
 
+	ldw ra, 0(sp)  ; reloading the stack
+	addi sp, sp, 4
 	ret
+
+	resetGSA:
+	stw zero, GSA(t0)
+	beq t0, zero, follow
+	addi t0, t0, -1
+	br resetGSA
+
 ; END: init_game
 
 
@@ -225,12 +248,12 @@ stw ra, 0(sp)
 
 ; call get_input ; address of potential new head stored in t4, {address of food is GSA(t0)} if GSA(t4) = 5 then collision with food
 
-ldw t1, HEAD_X(zero)
-srli t1, t1, 27 ; (x) * 8
+ldw t0, HEAD_X(zero)
+srli t0, t0, 27 ; (x) * 8
 ldw t7, HEAD_Y(zero)
-add t1, t1, t7  ; (x mod 4) * 8 + y
+add t0, t0, t7  ; (x mod 4) * 8 + y
 
-ldw t2, GSA(t1)
+ldw t2, GSA(t0)
 ; 4 cases
 ; right
 addi t6, zero, 1
@@ -260,10 +283,28 @@ beq t7, t1, coll_screen_body
 addi t1, t1, 1
 beq t7, t1, coll_screen_body
 
-addi t1, zero, 4116
-blt t0, t1, coll_screen_body ; < 0x1014 ; there is a collision with the screen
-addi t1, zero, 4504
-bge t0, t1, coll_screen_body ; >= 0x1198
+addi t1, zero, 1
+ldw t7, HEAD_X(zero)
+blt t7, zero, coll_screen_body ; if t0 (position of head) = 1, 2, 3, 4 / there is a body in front
+
+addi t1, t1, 1
+ldw t7, HEAD_Y(zero)
+blt t7, zero, coll_screen_body 
+
+addi t1, t1, 1
+ldw t7, HEAD_Y(zero)
+addi t4, zero, 8
+bgeu t7, t4, coll_screen_body 
+
+addi t1, t1, 1
+ldw t7, HEAD_X(zero)
+addi t4, zero, 12
+bgeu t7, t4, coll_screen_body 
+
+; addi t1, zero, 4116
+; blt t0, t1, coll_screen_body ; < 0x1014 ; 4116 ; there is a collision with the screen
+; addi t1, zero, 4504
+; bge t0, t1, coll_screen_body ; >= 0x1198 ; 4504
 
 addi v0, zero, 0 ; else, we store 0 in v0 to say everything is fine
 
@@ -278,7 +319,7 @@ jmpi post_col
 
 hit_up:
 addi t0, t1, -1 ; t1 is the position of head on the board
-jpmi post_col
+jmpi post_col
 
 hit_down:
 addi t0, t1, 1 ; t1 is the position of head on the board
@@ -603,7 +644,7 @@ blink_score:
 addi sp, sp, -4 ; allouer emplacement dans stack
 stw ra, 0(sp)
 
-call clear_leds
+call clear_leds ; TODO not clear leds but clear diplay led
 call wait
 call display_score
 call wait
