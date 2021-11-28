@@ -152,16 +152,15 @@ third:
 addi t6, t0, -10
 addi t4, zero, 10
 addi t1, t1, 1
-blt t6, t4, end1 ; at the end, t1 is the dizaine digit
+blt t6, t4, end_disp ; at the end, t1 is the dizaine digit
 br third
 
 fourth:
 addi t1, t0, -10
 addi t4, zero, 10
-blt t1, t4, end1 ; at the end, t1 is the unit digit
 br fourth
 
-end1: 
+end_disp: 
 ret
 ; END: display_score
 
@@ -246,8 +245,8 @@ beq t2, t6, hit_down
 addi t6, t6, 1
 beq t2, t6, hit_right
 
+post_col:
 ; after collision testing, value of position of direction head + 1 move is in t0
-
 addi t1, zero, 5	; init t1 at 5
 ldw t7, GSA(t0)
 beq t7, t1, coll_food ; if t0 (position of head) = 5 then there is a food in front
@@ -275,19 +274,19 @@ ret
 
 hit_left:
 addi t0, t1, -8 ; t1 is the position of head on the board
-ret
+jmpi post_col
 
 hit_up:
 addi t0, t1, -1 ; t1 is the position of head on the board
-ret
+jpmi post_col
 
 hit_down:
 addi t0, t1, 1 ; t1 is the position of head on the board
-ret
+jmpi post_col
 
 hit_right:
 addi t0, t1, 8 ; t1 is the position of head on the board
-ret
+jmpi post_col
 
 coll_food:
 addi v0, zero, 1 ; 1 to say collision with food -> ! set v0 back to 0
@@ -526,7 +525,21 @@ addi t0, zero, 1
 stw t0, CP_VALID(zero) ; setting CP_VALID to one
 ret
 
-
+copy_memory_CP:
+; copying current into check point
+ldw t3, HEAD_X(zero)
+stw t3, CP_HEAD_X(zero) ; Snake head's position on x
+ldw t3, HEAD_Y(zero)
+stw t3, CP_HEAD_Y(zero)
+ldw t3, TAIL_X(zero)
+stw t3, CP_TAIL_X(zero)
+ldw t3, TAIL_Y(zero)
+stw t3, CP_TAIL_Y(zero)
+ldw t3, SCORE(zero)
+stw t3, CP_SCORE(zero)
+ldw t3, GSA(zero)
+stw t3, CP_GSA(zero)
+ret
 ; END: save_checkpoint
 
 
@@ -551,7 +564,7 @@ ret
 check_CP:
 addi t0, zero, 0
 ldw t5, CP_VALID(zero)
-beq t0, t5, end2 ; if not valid, we break out of this process and don't look further down
+beq t0, t5, end_CP ; if not valid, we break out of this process and don't look further down
 
 ; as always every time we have branches or calls we need to store the ret value into a stack
 addi sp, sp, -4 ; allouer emplacement dans stack
@@ -564,33 +577,9 @@ addi sp, sp, 4
 
 ret
 
-end2: ; TODO ATTENTION GRADER
+end_CP: ; TODO ATTENTION GRADER
 ret
 
-; END: restore_checkpoint
-
-
-
-
-; BEGIN: copy_memory_CP
-copy_memory_CP:
-; copying current into check point
-ldw t3, HEAD_X(zero)
-stw t3, CP_HEAD_X(zero) ; Snake head's position on x
-ldw t3, HEAD_Y(zero)
-stw t3, CP_HEAD_Y(zero)
-ldw t3, TAIL_X(zero)
-stw t3, CP_TAIL_X(zero)
-ldw t3, TAIL_Y(zero)
-stw t3, CP_TAIL_Y(zero)
-ldw t3, SCORE(zero)
-stw t3, CP_SCORE(zero)
-ldw t3, GSA(zero)
-stw t3, CP_GSA(zero)
-ret
-; END: copy_memory_CP
-
-; BEGIN: load_memory
 load_memory_CP:
 ; copying current into check point
 ldw t3, CP_HEAD_X(zero)
@@ -606,7 +595,7 @@ stw t3, SCORE(zero)
 ldw t3, CP_GSA(zero)
 stw t3, GSA(zero)
 ret
-; END: load_memory_CP
+; END: restore_checkpoint
 
 
 ; BEGIN: blink_score
@@ -635,22 +624,17 @@ ret
 
 ; BEGIN: wait_procedure ; TODO LE NOM
 wait:
-addi t7, zero, 1
-slli t7, t7, 22
-addi t6, zero, 0
+addi t0, zero, 1
+slli t0, t0, 22
+addi t1, zero, 0
 
 wait_loop:
-addi t7, t7, -1
-bne t7, t6, wait_loop
+addi t0, t0, -1
+bne t0, t1, wait_loop
 
 ret
 		; just in case reputing this there TODO verify with an assistant - do we have to put it again in blink_score ?
 ; END: wait_procedure
-
-end: ; TODO ATTENTION GRADER
-ret
-
-
 
 digit_map:
 .word 0xFC ; 0
