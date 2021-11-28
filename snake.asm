@@ -38,14 +38,15 @@ main:
     ret
 
 main_loop:
-    call clear_leds
-	call wait_procedure ; so it is "fluent"
+    call draw_array
+	call display_score
+	call wait ; so it is "fluent"
+	call clear_leds
     call get_input
 	call hit_test ; if returns 2, terminate ??? which method ?
     call coll_transition ; if 2, terminates ?, if 1 create food, if 0 then continues down
 	; TODO, do we have to put coll_transition inside hit_test or not ?
 	call move_snake
-    call draw_array
     call main_loop
     ret
 
@@ -614,15 +615,15 @@ addi sp, sp, -4 ; allouer emplacement dans stack
 stw ra, 0(sp)
 
 call clear_leds
-call wait_procedure
+call wait
 call display_score
-call wait_procedure
+call wait
 call clear_leds
-call wait_procedure
+call wait
 call display_score
-call wait_procedure
+call wait
 call clear_leds
-call wait_procedure
+call wait
 call display_score
 
 ldw ra, 0(sp)
@@ -633,7 +634,7 @@ ret
 ; END: blink_score
 
 ; BEGIN: wait_procedure ; TODO LE NOM
-wait_procedure:
+wait:
 addi t7, zero, 1
 slli t7, t7, 22
 addi t6, zero, 0
