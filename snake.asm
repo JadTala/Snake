@@ -415,20 +415,22 @@ draw_array_set_pixel:
 ; TODO do not update tail position if collided with food i.e. a0 = 1
 ; BEGIN: move_snake
 move_snake:
+	; load head and tail coordinates
 	ldw t0, HEAD_X(zero)
 	ldw t1, HEAD_Y(zero)
-	ldw t2, TAIL_X(zero)
-	ldw t3, TAIL_Y(zero)
 
-	slli t4, t0, 3
-	slli t5, t2, 3
-	add t4, t4, t1
-	slli t4, t4, 2 
+	slli t2, t0, 3
+	add t2, t2, t1
+	slli t2, t2, 2
+	ldw t3, GSA(t2)
 
-	add t6, t6, t3
+	ldw t4, TAIL_X(zero)
+	ldw t5, TAIL_Y(zero)
+
+	slli t6, t4, 3
+	add t6, t6, t5
 	slli t6, t6, 2
-	ldw t3, GSA(t4)
-
+	
 	addi t7, zero, 1
 	beq t3, t7, move_snake_head_left
 	addi t7, t7, 1
