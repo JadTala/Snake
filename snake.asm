@@ -57,6 +57,7 @@ game_continue:
 	addi t0, zero, 2
 	beq v0, t0, game_init;
 	; update game logic
+	addi a0, zero, 0
 	call move_snake
 game_display:
 	call clear_leds
@@ -72,6 +73,7 @@ game_up:
 	; update score display
 	call display_score
 	; increment snake position
+	addi a0, zero, 1
 	call move_snake
 	; spawn new random food
 	call create_food
@@ -98,8 +100,9 @@ game_restore:
 ; BEGIN: clear_leds
 clear_leds:
     stw zero, LEDS(zero)
-    stw zero, LEDS + 4 (zero) 
-    stw zero, LEDS + 8 (zero)
+    stw zero, LEDS+4(zero) 
+    stw zero, LEDS+8(zero)
+
     ret
 ; END: clear_leds
 
@@ -108,13 +111,17 @@ clear_leds:
 set_pixel:
     srli t0, a0, 2  ; leds chunk index
     ldw t0, LEDS(t0); load leds chunk
+
     slli t1, a0, 30 ; x mod 4
     srli t1, t1, 27 ; (x mod 4) * 8
     add t1, t1, a1  ; (x mod 4) * 8 + y
+
     addi t2, zero, 1; bit to shift
     sll t2, t2, t1  ; shifting the bit
+
     or t0, t0, t2   ; update chunk
     stw t0, LEDS(a0); write update
+
     ret
 ; END: set_pixel
 
@@ -212,21 +219,15 @@ create_food:
 ; END: create_food
 
 
-; tests whether or not the new element being drawn as the snake’s head collides with the
-; screen boundary, the food, or the snake’s own body
-; If there is a collision with the food, the procedure returns 1 indicating that the score needs to be incremented.
-; If there is a collision with the screen boundary or the snake’s body, the procedure returns 2 indicating the end of the game. 
-; If there is no collision, the procedure returns 0
-
 ; BEGIN: hit_test
 hit_test:
 	addi sp, sp, -4
 	stw ra, 0(sp)
 
 	ldw t0, HEAD_X(zero)
-	srli t0, t0, 27 ; (x) * 8
+	slli t0, t0, 3 ; x * 8
 	ldw t7, HEAD_Y(zero)
-	add t0, t0, t7  ; (x mod 4) * 8 + y
+	add t0, t0, t7  ; x * 8 + y
 
 	ldw t2, GSA(t0)
 
@@ -307,28 +308,59 @@ hit_test_screen_body:
 ; END : hit_test
 
 
-
 ; BEGIN: get_input
 get_input:
-	ldw t0, BUTTONS+4(zero) ; get edgecapture
-	addi t1, zero, 0
-	bne t0, t1, get_input_update ; update only if button was pressed
-	ret
+	; get edgecapture
+	ldw t0, BUTTONS+4(zero)
+	; reset edgecapture
+	stw zero, BUTTONS+4(zero) 
+	; update if a button was pressed
+	bne t0, zero, get_input_update
+	; no button was pressed
+	addi v0, zero, 0
+	jmpi get_input_end
 
 get_input_update:
-    ldw t2, HEAD_X(zero) ; get head x and load it into t2
-	ldw t3, HEAD_Y(zero) ; get head y and load it into t3
-	
-	slli t2, t2, 5 ; 32x - shifting left by 5 bits is same as doing value * 2^5
-	slli t3, t3, 2 ; 4y - shifting left by 2 bits -> val of t3 * 2^2
-	add t4, t2, t3 ; 32x + 4y and store in t4
-	addi t4, t4, GSA ; head GSA address and add with t4 - side note: GSA contains 96 x 32-bit words :: 0x1014 - 0x1197 / 4116 - 4503 + 1 = 388 values between -> 97 values taking 4 each 
-	
-	andi t0, t0, 15	; ignore checkpoint button - value between 0-4 AND 15 will result in 0
-	stw t0, 0(t4) ; update
+	addi t3, zero, 1 ; helper bit
+	addi t7, zero, 5 ; counter
+	slli t4, t3, 4   ; mask
 
-	and t0, t0, zero ; reset edgecapture
-	stw t0, BUTTONS+4(zero) ; store if something is stil pressed
+get_input_scan:
+	; interpret edgecapture with priority for checkpoint button
+	and t1, t0, t4
+	beq t1, t4, get_input_post_scan
+	addi t7, t7, -1
+	srli t4, t4, 1
+	jmpi get_input_scan
+
+get_input_post_scan:
+	; return the pressed button
+	add v0, zero, t7
+
+	; break if button pressed is checkpoint
+	addi t1, zero, 5
+	beq t7, t1, get_input_end
+
+	; get snake position
+    ldw t1, HEAD_X(zero)
+	ldw t2, HEAD_Y(zero)
+	slli t1, t1, 3
+	add t1, t1, t2
+
+	; get current snake direction
+	ldw t3, GSA(t1)
+
+	; get opposite direction
+	addi t4, zero, 5
+	sub t4, t4, t3
+	
+	; don't allow the snake to turn around
+	beq t7, t4, get_input_end
+	
+	; update gsa
+	stw t7, GSA(t1)
+
+get_input_end:
 	ret
 ; END: get_input
 
@@ -380,7 +412,7 @@ draw_array_set_pixel:
     jmpi draw_array_step
 ; END: draw_array
 
-
+; TODO do not update tail position if collided with food i.e. a0 = 1
 ; BEGIN: move_snake
 move_snake:
 	ldw t0, HEAD_X(zero)
@@ -495,49 +527,29 @@ move_snake_tail_right:
 
 ; BEGIN: save_checkpoint
 save_checkpoint:
-	; as always every time we have branches we need to store the ret value into a stack
 	addi sp, sp, -4 
 	stw ra, 0(sp)
 
 	ldw t1, SCORE(zero)
+	addi t2, zero, 10
+save_checkpoint_mod:
+	blt t1, t2, save_checkpoint_check
+	addi t1, t1, -10
+	jmpi save_checkpoint_mod
 
-	; TODO do a loop once everything works
-	addi t0, zero, 10 ; hard coded is simpler, since the score cannot go over 96, creating loops would be bothersome
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 20
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 30
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 40
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 50
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 60
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 70
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 80
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 90
-	beq t0, t1, save_checkpoint_set_valid
-	addi t0, zero, 100
+save_checkpoint_check:
+	; if score is multiple of 10 create new checkpoint
+	beq t1, zero, save_checkpoint_create
 
-	addi t0, zero, 1
-	ldw t1, CP_VALID(zero)
-	beq t0, t1, save_checkpoint_copy ; TODO here there is a problem, while score is at mult. of 10, the position is stored at every move since the score hasn't changed (case where we are in an impossible case, even restoring wouldn't help since it will be the last position before the collision)
+	; if not, notify and break
+	addi v0, zero, 0
+	jmpi save_checkpoint_end
 
-	ldw ra, 0(sp)
-	addi sp, sp, 4
-
-	ret
-
-save_checkpoint_set_valid:
+save_checkpoint_create:
 	; setting the checkpoint as valid
 	addi t0, zero, 1
 	stw t0, CP_VALID(zero)
-	ret
 
-save_checkpoint_copy:
 	; copying current into check point
 	ldw t3, HEAD_X(zero)
 	stw t3, CP_HEAD_X(zero)
@@ -555,45 +567,35 @@ save_checkpoint_copy:
 	ldw t3, GSA(zero)
 	stw t3, CP_GSA(zero)
 
+	; notify that checkpoint was saved
+	addi v0, zero, 1
+
+	jmpi save_checkpoint_end
+
+save_checkpoint_end:
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
 	ret
 ; END: save_checkpoint
 
 
 ; BEGIN: restore_checkpoint
 restore_checkpoint:
-	; if checkpoint button is pressed, if pressed, check
-	addi t0, zero, 5 ; TODO CHECK THIS LINE OF CODE, IM NOT SURE HOW WE SEE IF THE BUTTON CHECKPOINT has been pressed : get edgecapture and store into t1
-
-	; as always every time we have branches or calls we need to store the ret value into a stack
-	addi sp, sp, -4 ; allouer emplacement dans stack
-	stw ra, 0(sp)
-
-	ldw t5, BUTTONS+5(zero)
-	beq t5, t0, restore_checkpoint_check ; TODO maybe should we modify the stack pointer in restore_checkpoint_check to go further ???
-
-	ldw ra, 0(sp)  ; reloading the stack
-	addi sp, sp, 4
-
-	; if not pressed then return back
-	ret
-
-restore_checkpoint_check:
-	; checking if the checkpoint is valid
-	addi t0, zero, 0
-	ldw t5, CP_VALID(zero)
-	beq t0, t5, restore_checkpoint_end
-
 	addi sp, sp, -4
 	stw ra, 0(sp)
 
-	call restore_checkpoint_load
+	; check if checkpoint is valid
+	addi t0, zero, 1
+	ldw t1, CP_VALID(zero)
+	; if the checkpoint is valid load it and notify
+	beq t1, t0, restore_checkpoint_load
+	; else notify that not valid
+	beq t1, zero, restore_checkpoint_do_nothing
 
 	ldw ra, 0(sp)
 	addi sp, sp, 4
 
-	ret
-
-restore_checkpoint_end:
 	ret
 
 restore_checkpoint_load:
@@ -613,41 +615,41 @@ restore_checkpoint_load:
 	ldw t3, CP_GSA(zero)
 	stw t3, GSA(zero)
 
+	addi v0, zero, 1
+
 	ret
+
+restore_checkpoint_do_nothing:
+	addi v0, zero, 0
 ; END: restore_checkpoint
 
 
 ; BEGIN: blink_score
 blink_score:
-	addi sp, sp, -4 ; allouer emplacement dans stack
-	stw ra, 0(sp)
+	addi t0, zero, 5
 
-	; TODO clear segment leds instead
-	call clear_leds
-	call blink_score_wait
-	call display_score
-	call blink_score_wait
-	call clear_leds
-	call blink_score_wait
-	call display_score
-	call blink_score_wait
-	call clear_leds
-	call blink_score_wait
-	call display_score
+blink_score_loop:
+	; break if blinked enough times
+	beq t0, zero, blink_score_end
 
-	ldw ra, 0(sp)
-	addi sp, sp, 4
-	ret
+	; clear the score
+	stw zero, SEVEN_SEGS(zero)
+	stw zero, SEVEN_SEGS+4(zero)
+	stw zero, SEVEN_SEGS+8(zero)
+	stw zero, SEVEN_SEGS+12(zero)
 
-blink_score_wait:
-	addi t0, zero, 1
-	slli t0, t0, 22
-	addi t1, zero, 0
-
+	; wait procedure
+	addi t1, zero, 1
+	slli t1, t1, 22
 blink_score_wait_loop:
-	addi t0, t0, -1
-	bne t0, t1, blink_score_wait_loop
+	addi t1, t1, -1
+	bne t1, zero, blink_score_wait_loop
 
+	; display the score
+	call display_score
+	jmpi blink_score_loop
+
+blink_score_end:
 	ret
 ; END: blink_score
 
@@ -663,16 +665,3 @@ digit_map:
 .word 0xE0 ; 7
 .word 0xFE ; 8
 .word 0xF6 ; 9
-
-; TODO - check left right up down constraint, shouldnt be able to go left while going right
-
-; TODO - However, if the checkpoint button was pressed together with any other button, this procedure should return that
-; only the checkpoint button was pressed.
-
-
-; ; as always every time we have branches or calls we need to store the ret value into a stack
-; addi sp, sp, -4 ; allouer emplacement dans stack
-; stw ra, 0(sp)
-
-; ldw ra, 0(sp)  ; reloading the stack
-; addi sp, sp, 4
