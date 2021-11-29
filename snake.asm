@@ -29,25 +29,31 @@ addi    sp, zero, LEDS
 ; return values
 ;     This procedure should never return.
 main:
- 	; checkpoint initialization
+	; checkpoint initialization
 	stw zero, CP_VALID(zero)
+
 	; initializing the game
-game_init:
+	game_init:
     call init_game
+
 	; launching the main game loop
-game_loop:
+	game_loop:
+
 	; wait a bit before getting input
 	addi t0, zero, 1
 	slli t0, t0, 22
-game_wait:
+	game_wait:
 	addi t0, t0, -1
 	bne t0, zero, game_wait
+
 	; polling input
     call get_input
+
 	; if checkpoint button is pressed restore checkpoint
 	addi t0, zero, 5
 	beq v0, t0, game_restore
-game_continue:
+
+	game_continue:
 	; collision testing
 	call hit_test
 	; food was hit
@@ -56,16 +62,18 @@ game_continue:
 	; screen border or snake body was hit
 	addi t0, zero, 2
 	beq v0, t0, game_init;
+
 	; update game logic
 	addi a0, zero, 0
 	call move_snake
-game_display:
+
+	game_display:
 	call clear_leds
 	call draw_array
     
 	jmpi game_loop
 
-game_up:
+	game_up:
 	; increment score
 	ldw t0, SCORE(zero)
 	addi t0, t0, 1
@@ -85,11 +93,11 @@ game_up:
 	addi t0, zero, 1
 	beq v0, t0, game_blink
 
-game_blink:
+	game_blink:
 	call blink_score
 	jmpi game_display
 
-game_restore:
+	game_restore:
 	call restore_checkpoint
 	; checking whether or not checkpoint is valid
 	addi t0, zero, 0
@@ -137,13 +145,13 @@ display_score:
 	addi t2, t0, 0 
 	addi t3, zero, 10
 	addi t4, zero, 0
-display_score_loop:
+	display_score_loop:
 	blt t1, t3, display_score_write
 	addi t1, t1, -10
 	addi t4, t4, 4
 	jmpi display_score_loop
 	
-display_score_write:
+	display_score_write:
 	slli t1, t1, 2
 	ldw t0, digit_map(t1) 
 	stw t0, SEVEN_SEGS+12(zero)
@@ -163,7 +171,7 @@ init_game: ; TODO réinitialiser la GSA -> tous les remettre à 0
 	addi t0, zero, 95
 	call init_game_reset_gsa
 
-init_game_callback:
+	init_game_callback:
 	; spawn the 1-pixel snake at the upperleftmost pixel of the screen
 	stw zero, HEAD_X(zero)
     stw zero, HEAD_Y(zero)
@@ -175,7 +183,7 @@ init_game_callback:
 	stw t0, GSA(zero)
 
 	; spawn a random food
-	; call create_food
+	call create_food
 
 	; reset the score
 	stw zero, SCORE(zero)
@@ -189,7 +197,7 @@ init_game_callback:
 	addi sp, sp, 4
 	ret
 
-init_game_reset_gsa:
+	init_game_reset_gsa:
 	stw zero, GSA(t0)
 	beq t0, zero, init_game_callback
 	addi t0, t0, -1
@@ -243,7 +251,7 @@ hit_test:
 	addi t6, t6, 1
 	beq t2, t6, hit_test_right
 
-hit_test_resolution:
+	hit_test_resolution:
 	; after collision testing, value of position of direction head + 1 move is in t0
 
 	; out of bounds check
@@ -277,32 +285,32 @@ hit_test_resolution:
 
 	addi v0, zero, 0
 
-hit_test_end:
+	hit_test_end:
 	ldw ra, 0(sp)
 	addi sp, sp, 4
 	ret
 
-hit_test_left:
+	hit_test_left:
 	addi t0, t1, -8
 	jmpi hit_test_resolution
 
-hit_test_up:
+	hit_test_up:
 	addi t0, t1, -1
 	jmpi hit_test_resolution
 
-hit_test_down:
+	hit_test_down:
 	addi t0, t1, 1
 	jmpi hit_test_resolution
 
-hit_test_right:
+	hit_test_right:
 	addi t0, t1, 8
 	jmpi hit_test_resolution
 
-hit_test_food:
+	hit_test_food:
 	addi v0, zero, 1
 	jmpi hit_test_end
 
-hit_test_screen_body:
+	hit_test_screen_body:
 	addi v0, zero, 2
 	jmpi hit_test_end
 ; END : hit_test
@@ -320,12 +328,12 @@ get_input:
 	addi v0, zero, 0
 	jmpi get_input_end
 
-get_input_update:
+	get_input_update:
 	addi t3, zero, 1 ; helper bit
 	addi t7, zero, 5 ; counter
 	slli t4, t3, 4   ; mask
 
-get_input_scan:
+	get_input_scan:
 	; interpret edgecapture with priority for checkpoint button
 	and t1, t0, t4
 	beq t1, t4, get_input_post_scan
@@ -333,7 +341,7 @@ get_input_scan:
 	srli t4, t4, 1
 	jmpi get_input_scan
 
-get_input_post_scan:
+	get_input_post_scan:
 	; return the pressed button
 	add v0, zero, t7
 
@@ -360,7 +368,7 @@ get_input_post_scan:
 	; update gsa
 	stw t7, GSA(t1)
 
-get_input_end:
+	get_input_end:
 	ret
 ; END: get_input
 
@@ -373,25 +381,25 @@ draw_array:
 	jmpi draw_array_x_loop 
 	ret
 
-draw_array_x_loop:
+	draw_array_x_loop:
 	addi t2, zero, 0
 	blt t0, t1, draw_array_y_loop
 	ret
 	
-draw_array_y_loop:
+	draw_array_y_loop:
 	slli t4, t0, 3
 	add t5, t4, t2
 	slli t5, t5, 2
 	ldw t4, GSA(t5)
 	bne t4, zero, draw_array_set_pixel
 
-draw_array_step:
+	draw_array_step:
 	addi t2, t2, 1
 	blt t2, t3, draw_array_y_loop
 	addi t0, t0, 1
 	jmpi draw_array_x_loop 
 	
-draw_array_set_pixel:
+	draw_array_set_pixel:
 	addi sp, sp, -12
 
 	stw ra, 0(sp)
@@ -440,7 +448,7 @@ move_snake:
 	addi t7, t7, 1
 	beq t3, t7, move_snake_head_right
 
-move_snake_head_left:
+	move_snake_head_left:
 	addi t2, t0, -1
 	stw t2, HEAD_X(zero)
 	ldw t3, HEAD_Y(zero)
@@ -451,7 +459,7 @@ move_snake_head_left:
 	stw t5, GSA(t4)
 	jmpi move_snake_check_tail 
 
-move_snake_head_up:
+	move_snake_head_up:
 	addi t2, t1, -1
 	stw t2, HEAD_Y(zero)
 	ldw t3, HEAD_X(zero)
@@ -462,7 +470,7 @@ move_snake_head_up:
 	stw t5, GSA(t4)
 	jmpi move_snake_check_tail 
 
-move_snake_head_down:
+	move_snake_head_down:
 	addi t2, t1, 1
 	stw t2, HEAD_Y(zero)
 	ldw t3, HEAD_X(zero)
@@ -473,7 +481,7 @@ move_snake_head_down:
 	stw t5, GSA(t4)
 	jmpi move_snake_check_tail 
 
-move_snake_head_right:
+	move_snake_head_right:
 	addi t2, t0, 1
 	stw t2, HEAD_X(zero)
 	ldw t3, HEAD_Y(zero)
@@ -484,11 +492,11 @@ move_snake_head_right:
 	stw t5, GSA(t4)
 	jmpi move_snake_check_tail
 
-move_snake_check_tail:
+	move_snake_check_tail:
 	beq a0, zero, move_snake_update_tail 
 	ret 
 
-move_snake_update_tail:						
+	move_snake_update_tail:						
 	ldw t3, GSA(t6)
 	stw zero, GSA(t6)
 	addi t7, zero, 1
@@ -501,25 +509,25 @@ move_snake_update_tail:
 	beq t3, t7, move_snake_tail_right
 	ret
 
-move_snake_tail_left:
+	move_snake_tail_left:
 	ldw t4, TAIL_X(zero)
 	addi t3, t4, -1
 	stw t3, TAIL_X(zero)
 	ret	
 	
-move_snake_tail_up:
+	move_snake_tail_up:
 	ldw t5, TAIL_Y(zero)
 	addi t3, t5, -1
 	stw t3, TAIL_Y(zero)
 	ret
 	
-move_snake_tail_down:
+	move_snake_tail_down:
 	ldw t5, TAIL_Y(zero)
 	addi t3, t5, 1
 	stw t3, TAIL_Y(zero)
 	ret
 
-move_snake_tail_right:
+	move_snake_tail_right:
 	ldw t4, TAIL_X(zero)
 	addi t3, t4, 1
 	stw t3, TAIL_X(zero)
@@ -534,12 +542,12 @@ save_checkpoint:
 
 	ldw t1, SCORE(zero)
 	addi t2, zero, 10
-save_checkpoint_mod:
+	save_checkpoint_mod:
 	blt t1, t2, save_checkpoint_check
 	addi t1, t1, -10
 	jmpi save_checkpoint_mod
 
-save_checkpoint_check:
+	save_checkpoint_check:
 	; if score is multiple of 10 create new checkpoint
 	beq t1, zero, save_checkpoint_create
 
@@ -547,7 +555,7 @@ save_checkpoint_check:
 	addi v0, zero, 0
 	jmpi save_checkpoint_end
 
-save_checkpoint_create:
+	save_checkpoint_create:
 	; setting the checkpoint as valid
 	addi t0, zero, 1
 	stw t0, CP_VALID(zero)
@@ -574,7 +582,7 @@ save_checkpoint_create:
 
 	jmpi save_checkpoint_end
 
-save_checkpoint_end:
+	save_checkpoint_end:
 	ldw ra, 0(sp)
 	addi sp, sp, 4
 
@@ -600,7 +608,7 @@ restore_checkpoint:
 
 	ret
 
-restore_checkpoint_load:
+	restore_checkpoint_load:
 	ldw t3, CP_HEAD_X(zero)
 	stw t3, HEAD_X(zero)
 	ldw t3, CP_HEAD_Y(zero)
@@ -621,7 +629,7 @@ restore_checkpoint_load:
 
 	ret
 
-restore_checkpoint_do_nothing:
+	restore_checkpoint_do_nothing:
 	addi v0, zero, 0
 ; END: restore_checkpoint
 
@@ -630,7 +638,7 @@ restore_checkpoint_do_nothing:
 blink_score:
 	addi t0, zero, 5
 
-blink_score_loop:
+	blink_score_loop:
 	; break if blinked enough times
 	beq t0, zero, blink_score_end
 
@@ -643,7 +651,7 @@ blink_score_loop:
 	; wait procedure
 	addi t1, zero, 1
 	slli t1, t1, 22
-blink_score_wait_loop:
+	blink_score_wait_loop:
 	addi t1, t1, -1
 	bne t1, zero, blink_score_wait_loop
 
@@ -651,7 +659,7 @@ blink_score_wait_loop:
 	call display_score
 	jmpi blink_score_loop
 
-blink_score_end:
+	blink_score_end:
 	ret
 ; END: blink_score
 
