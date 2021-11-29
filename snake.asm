@@ -162,9 +162,8 @@ display_score:
 ; END: display_score
 
 
-
 ; BEGIN: init_game
-init_game: ; TODO réinitialiser la GSA -> tous les remettre à 0
+init_game:
 	addi sp, sp, -4
 	stw ra, 0(sp)
 
@@ -195,14 +194,31 @@ init_game: ; TODO réinitialiser la GSA -> tous les remettre à 0
 
 	ldw ra, 0(sp)
 	addi sp, sp, 4
+
 	ret
 
 	init_game_reset_gsa:
-	stw zero, GSA(t0)
-	beq t0, zero, init_game_callback
-	addi t0, t0, -1
-	br init_game_reset_gsa
+	addi t0, zero, 0
+	addi t1, zero, 12
+	addi t3, zero, 8
+	jmpi init_game_reset_gsa_x_loop 
+	ret
 
+	init_game_reset_gsa_x_loop:
+	addi t2, zero, 0
+	blt t0, t1, init_game_reset_gsa_y_loop
+	jmpi init_game_callback
+	
+	init_game_reset_gsa_y_loop:
+	slli t4, t0, 3
+	add t5, t4, t2
+	slli t5, t5, 2
+	stw zero, GSA(t5)
+
+	addi t2, t2, 1
+	blt t2, t3, init_game_reset_gsa_y_loop
+	addi t0, t0, 1
+	jmpi init_game_reset_gsa_x_loop
 ; END: init_game
 
 
@@ -229,13 +245,12 @@ create_food:
 
 ; BEGIN: hit_test
 hit_test:
-	addi sp, sp, -4
-	stw ra, 0(sp)
-
 	ldw t0, HEAD_X(zero)
-	slli t0, t0, 3 ; x * 8
 	ldw t7, HEAD_Y(zero)
-	add t0, t0, t7  ; x * 8 + y
+
+	slli t0, t0, 3
+	add t0, t0, t7
+	slli t7, t7, 2
 
 	ldw t2, GSA(t0)
 
@@ -252,8 +267,6 @@ hit_test:
 	beq t2, t6, hit_test_right
 
 	hit_test_resolution:
-	; after collision testing, value of position of direction head + 1 move is in t0
-
 	; out of bounds check
 	addi t1, zero, 1
 	ldw t7, HEAD_X(zero)
@@ -286,8 +299,6 @@ hit_test:
 	addi v0, zero, 0
 
 	hit_test_end:
-	ldw ra, 0(sp)
-	addi sp, sp, 4
 	ret
 
 	hit_test_left:
@@ -354,6 +365,7 @@ get_input:
 	ldw t2, HEAD_Y(zero)
 	slli t1, t1, 3
 	add t1, t1, t2
+	slli t1, t1, 2
 
 	; get current snake direction
 	ldw t3, GSA(t1)
@@ -379,7 +391,6 @@ draw_array:
 	addi t1, zero, 12
 	addi t3, zero, 8
 	jmpi draw_array_x_loop 
-	ret
 
 	draw_array_x_loop:
 	addi t2, zero, 0
@@ -397,7 +408,7 @@ draw_array:
 	addi t2, t2, 1
 	blt t2, t3, draw_array_y_loop
 	addi t0, t0, 1
-	jmpi draw_array_x_loop 
+	jmpi draw_array_x_loop
 	
 	draw_array_set_pixel:
 	addi sp, sp, -12
@@ -420,7 +431,7 @@ draw_array:
     jmpi draw_array_step
 ; END: draw_array
 
-; TODO do not update tail position if collided with food i.e. a0 = 1
+
 ; BEGIN: move_snake
 move_snake:
 	; load head and tail coordinates
@@ -441,11 +452,11 @@ move_snake:
 	
 	addi t7, zero, 1
 	beq t3, t7, move_snake_head_left
-	addi t7, t7, 1
+	addi t7, zero, 2
 	beq t3, t7, move_snake_head_up
-	addi t7, t7, 1		
+	addi t7, zero, 3		
 	beq t3, t7, move_snake_head_down
-	addi t7, t7, 1
+	addi t7, zero, 4
 	beq t3, t7, move_snake_head_right
 
 	move_snake_head_left:
