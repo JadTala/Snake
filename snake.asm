@@ -105,6 +105,7 @@ main:
 	addi t0, zero, 1
 	beq v0, t0, game_blink
 
+
 ; BEGIN: clear_leds
 clear_leds:
     stw zero, LEDS(zero)
@@ -117,23 +118,43 @@ clear_leds:
 
 ; BEGIN: set_pixel
 set_pixel:
-    srli t0, a0, 2  ; leds chunk index
-    ldw t0, LEDS(t0); load leds chunk
+	slli t0, a0, 3
+	add t0, t0, a1 
+	addi t1, zero, 1
+	sll t2, t1, t0				 	
+	
+	addi t0, zero, 4
+	blt a0, t0, set_pixel_chunk_1
+	addi t0, t0, 4
+	blt a0, t0, set_pixel_chunk_2
+	addi t0, t0, 4
+	blt a0, t0, set_pixel_chunk_3
 
-    slli t1, a0, 30 ; x mod 4
-    srli t1, t1, 27 ; (x mod 4) * 8
-    add t1, t1, a1  ; (x mod 4) * 8 + y
+	ret
 
-    addi t2, zero, 1; bit to shift
-    sll t2, t2, t1  ; shifting the bit
+	set_pixel_chunk_1:
+		ldw t4, LEDS(zero)
+		or t2, t2, t4
+		stw t2, LEDS(zero)
 
-    or t0, t0, t2   ; update chunk
-    stw t0, LEDS(a0); write update
+		ret
 
-    ret
+	set_pixel_chunk_2:
+		ldw t4, LEDS+4(zero)
+		or t2, t2, t4
+		stw t2, LEDS+4(zero)
+
+		ret
+
+	set_pixel_chunk_3:
+		ldw t4, LEDS+8(zero)
+		or t2, t2, t4
+		stw t2, LEDS+8(zero)
+
+		ret
 ; END: set_pixel
 
-; TODO score modulo 100
+
 ; BEGIN: display_score
 display_score:
 	; last two digits will stay 0
@@ -373,12 +394,12 @@ draw_array:
 	addi t5, zero, 8
 	jmpi draw_array_x_loop 
 
-draw_array_x_loop:
+	draw_array_x_loop:
 	addi t1, zero, 0
 	blt t0, t6, draw_array_y_loop
 	ret
 	
-draw_array_y_loop:
+	draw_array_y_loop:
 	slli t2, t0, 3
 	add t3, t2, t1
 	slli t3, t3, 2
@@ -386,14 +407,14 @@ draw_array_y_loop:
 	ldw t4, GSA(t3)
 	bne t4, zero, draw_array_set_pixel
 
-draw_array_step:
+	draw_array_step:
 	addi t1, t1, 1
 	blt t1, t5, draw_array_y_loop
 	addi t0, t0, 1
 
 	jmpi draw_array_x_loop 
 	
-draw_array_set_pixel:
+	draw_array_set_pixel:
 	addi sp, sp, -12
 	stw ra, 0(sp)
 	stw a1, 4(sp)
