@@ -153,10 +153,10 @@ display_score:
 	
 	display_score_write:
 	slli t2, t2, 2
-	ldw t0, digit_map(t1) 
-	stw t0, SEVEN_SEGS+12(zero)
 	ldw t0, digit_map(t4)
 	stw t0, SEVEN_SEGS+8(zero)
+	ldw t0, digit_map(t2) 
+	stw t0, SEVEN_SEGS+12(zero)
 
 	ret
 ; END: display_score
@@ -177,7 +177,6 @@ init_game:
 	addi t1, t1, 1
 	blt t1, t2, init_game_reset_gsa
 
-	init_game_callback:
 	; spawn the 1-pixel snake at the upperleftmost pixel of the screen
 	stw zero, HEAD_X(zero)
     stw zero, HEAD_Y(zero)
@@ -215,17 +214,15 @@ create_food:
     addi t0, zero, 1
     stw t0, RANDOM_NUM(zero)
     ldw	t0, RANDOM_NUM(zero)
-    andi t0, t0, 255
+    andi t0, t0, 127
     addi t1, zero, 96
 	blt t0, zero, create_food
 	bge t0, t1, create_food
     slli t0, t0, 2
 	ldw t1, GSA(t0)
     bne t1, zero, create_food
-    addi t1, zero, 5 ; checkpoint
-	stw t1, GSA(t0) ; storing 5 (t1) at GSA(t0)
-
-	addi v0, zero, 0 ; else, we store 0 in v0 to say everything to put the v0 value back from 2 to 0 to say there is no more collision
+    addi t1, zero, 5
+	stw t1, GSA(t0)
 
     ret
 ; END: create_food
