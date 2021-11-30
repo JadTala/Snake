@@ -133,7 +133,7 @@ set_pixel:
     ret
 ; END: set_pixel
 
-
+; TODO score modulo 100
 ; BEGIN: display_score
 display_score:
 	; last two digits will stay 0
@@ -142,17 +142,17 @@ display_score:
 	stw t0, SEVEN_SEGS+4(zero)
 
 	ldw t1, SCORE(zero)
-	addi t2, t0, 0 
+	addi t2, t1, 0 
 	addi t3, zero, 10
 	addi t4, zero, 0
 	display_score_loop:
-	blt t1, t3, display_score_write
-	addi t1, t1, -10
+	blt t2, t3, display_score_write
+	addi t2, t2, -10
 	addi t4, t4, 4
 	jmpi display_score_loop
 	
 	display_score_write:
-	slli t1, t1, 2
+	slli t2, t2, 2
 	ldw t0, digit_map(t1) 
 	stw t0, SEVEN_SEGS+12(zero)
 	ldw t0, digit_map(t4)
@@ -372,45 +372,45 @@ get_input:
 ; BEGIN: draw_array
 draw_array:
 	addi t0, zero, 0
-	addi t1, zero, 12
-	addi t3, zero, 8
+	addi t6, zero, 12
+	addi t5, zero, 8
 	jmpi draw_array_x_loop 
 
-	draw_array_x_loop:
-	addi t2, zero, 0
-	blt t0, t1, draw_array_y_loop
+draw_array_x_loop:
+	addi t1, zero, 0
+	blt t0, t6, draw_array_y_loop
 	ret
 	
-	draw_array_y_loop:
-	slli t4, t0, 3
-	add t5, t4, t2
-	slli t5, t5, 2
-	ldw t4, GSA(t5)
+draw_array_y_loop:
+	slli t2, t0, 3
+	add t3, t2, t1
+	slli t3, t3, 2
+
+	ldw t4, GSA(t3)
 	bne t4, zero, draw_array_set_pixel
 
-	draw_array_step:
-	addi t2, t2, 1
-	blt t2, t3, draw_array_y_loop
+draw_array_step:
+	addi t1, t1, 1
+	blt t1, t5, draw_array_y_loop
 	addi t0, t0, 1
-	jmpi draw_array_x_loop
-	
-	draw_array_set_pixel:
-	addi sp, sp, -12
 
+	jmpi draw_array_x_loop 
+	
+draw_array_set_pixel:
+	addi sp, sp, -12
 	stw ra, 0(sp)
 	stw a1, 4(sp)
 	stw a0, 8(sp)
 
 	addi a0, t0, 0
-	addi a1, t2, 0
+	addi a1, t1, 0
 	call set_pixel
-	addi t0, a0, 0
-	addi t2, a1, 0
+	addi t0,a0,0
+	addi t1,a1,0
 
 	ldw a0, 8(sp)
 	ldw a1, 4(sp)
 	ldw ra, 0(sp)
-	
 	addi sp, sp, 12
     jmpi draw_array_step
 ; END: draw_array
