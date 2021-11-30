@@ -167,8 +167,15 @@ init_game:
 	addi sp, sp, -4
 	stw ra, 0(sp)
 
-	addi t0, zero, 95
-	call init_game_reset_gsa
+	; reset gsa
+	addi t0, zero, 0
+	addi t1, zero, 0
+	addi t2, zero, 96
+	init_game_reset_gsa:
+	stw zero, GSA(t0)
+	addi t0, t0, 4
+	addi t1, t1, 1
+	blt t1, t2, init_game_reset_gsa
 
 	init_game_callback:
 	; spawn the 1-pixel snake at the upperleftmost pixel of the screen
@@ -184,6 +191,10 @@ init_game:
 	; spawn a random food
 	call create_food
 
+	; display game
+	call clear_leds
+	call draw_array
+
 	; reset the score
 	stw zero, SCORE(zero)
 	call display_score
@@ -196,29 +207,6 @@ init_game:
 	addi sp, sp, 4
 
 	ret
-
-	init_game_reset_gsa:
-	addi t0, zero, 0
-	addi t1, zero, 12
-	addi t3, zero, 8
-	jmpi init_game_reset_gsa_x_loop 
-	ret
-
-	init_game_reset_gsa_x_loop:
-	addi t2, zero, 0
-	blt t0, t1, init_game_reset_gsa_y_loop
-	jmpi init_game_callback
-	
-	init_game_reset_gsa_y_loop:
-	slli t4, t0, 3
-	add t5, t4, t2
-	slli t5, t5, 2
-	stw zero, GSA(t5)
-
-	addi t2, t2, 1
-	blt t2, t3, init_game_reset_gsa_y_loop
-	addi t0, t0, 1
-	jmpi init_game_reset_gsa_x_loop
 ; END: init_game
 
 
@@ -245,85 +233,81 @@ create_food:
 
 ; BEGIN: hit_test
 hit_test:
-	ldw t0, HEAD_X(zero)
-	ldw t7, HEAD_Y(zero)
-
-	slli t0, t0, 3
-	add t0, t0, t7
-	slli t7, t7, 2
-
-	ldw t2, GSA(t0)
-
-	addi t6, zero, 1
-	beq t2, t6, hit_test_left
-
-	addi t6, t6, 1
-	beq t2, t6, hit_test_up
-
-	addi t6, t6, 1
-	beq t2, t6, hit_test_down
-
-	addi t6, t6, 1
-	beq t2, t6, hit_test_right
-
-	hit_test_resolution:
-	; out of bounds check
-	addi t1, zero, 1
-	ldw t7, HEAD_X(zero)
-	blt t7, zero, hit_test_screen_body
-	addi t1, t1, 1
-	ldw t7, HEAD_Y(zero)
-	blt t7, zero, hit_test_screen_body 
-	addi t1, t1, 1
-	ldw t7, HEAD_Y(zero)
-	addi t4, zero, 8
-	bgeu t7, t4, hit_test_screen_body 
-	addi t1, t1, 1
-	ldw t7, HEAD_X(zero)
-	addi t4, zero, 12
-	bgeu t7, t4, hit_test_screen_body 
-
-	addi t1, zero, 5
-	ldw t7, GSA(t0)
-	beq t7, t1, hit_test_food
-
-	addi t1, zero, 1
-	beq t7, t1, hit_test_screen_body
-	addi t1, t1, 1
-	beq t7, t1, hit_test_screen_body
-	addi t1, t1, 1
-	beq t7, t1, hit_test_screen_body
-	addi t1, t1, 1
-	beq t7, t1, hit_test_screen_body
-
 	addi v0, zero, 0
-
-	hit_test_end:
+	ldw t0, HEAD_X(zero)
+	ldw t1, HEAD_Y(zero)
+	slli t2, t0, 3
+	add t2, t2, t1
+	slli t2, t2, 2
+	ldw t3, GSA(t2)
+	addi t4, zero, 1
+	beq t3, t4, hit_test_left				
+	addi t4, t4, 1
+	beq t3, t4, hit_test_up
+	addi t4, t4, 1
+	beq t3, t4, hit_test_down
+	addi t4, t4, 1
+	beq t3, t4, hit_test_right
 	ret
-
+ 
 	hit_test_left:
-	addi t0, t1, -8
-	jmpi hit_test_resolution
-
+	addi t0, t0, -1
+	slli t2, t0, 3
+	add t2, t2, t1
+	slli t2, t2, 2
+	ldw t3, GSA(t2)
+	jmpi hit_test_next
+	
 	hit_test_up:
-	addi t0, t1, -1
-	jmpi hit_test_resolution
+	addi t1, t1, -1
+	slli t2, t0, 3
+	add t2, t2, t1
+	slli t2, t2, 2
+	ldw t3, GSA(t2)
+	jmpi hit_test_next
 
 	hit_test_down:
-	addi t0, t1, 1
-	jmpi hit_test_resolution
+	addi t1, t1, 1
+	slli t2, t0, 3
+	add t2, t2, t1
+	slli t2, t2, 2
+	ldw t3, GSA(t2)
+	jmpi hit_test_next
 
 	hit_test_right:
-	addi t0, t1, 8
-	jmpi hit_test_resolution
+	addi t0, t0, 1
+	slli t2, t0, 3
+	add t2, t2, t1
+	slli t2, t2, 2
+	ldw t3, GSA(t2)
+	jmpi hit_test_next
+	
+	hit_test_next:
+	blt t0, zero, hit_test_screen_body
+	blt t1, zero, hit_test_screen_body
+	addi t4, zero, 12
+	bge t0, t4, hit_test_screen_body
+	addi t4, zero, 8
+	bge t1, t4, hit_test_screen_body
+	addi t4, zero, 1
+	beq t3, t4, hit_test_screen_body
+	addi t4, zero, 2
+	beq t3, t4, hit_test_screen_body
+	addi t4, zero, 3
+	beq t3, t4, hit_test_screen_body
+	addi t4, zero, 4
+	beq t3, t4, hit_test_screen_body
+	addi t4, zero, 5
+	beq t3, t4, hit_test_food
+	ret
 
 	hit_test_food:
 	addi v0, zero, 1
-	jmpi hit_test_end
-
+	stw zero, GSA(t2)
+	ret	
 	hit_test_screen_body:
 	addi v0, zero, 2
-	jmpi hit_test_end
+	ret
 ; END : hit_test
 
 
@@ -668,6 +652,8 @@ blink_score:
 
 	; display the score
 	call display_score
+
+	addi t0, t0, -1
 	jmpi blink_score_loop
 
 	blink_score_end:
