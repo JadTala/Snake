@@ -133,25 +133,25 @@ set_pixel:
 	ret
 
 	set_pixel_chunk_1:
-		ldw t4, LEDS(zero)
-		or t2, t2, t4
-		stw t2, LEDS(zero)
+	ldw t4, LEDS(zero)
+	or t2, t2, t4
+	stw t2, LEDS(zero)
 
-		ret
+	ret
 
 	set_pixel_chunk_2:
-		ldw t4, LEDS+4(zero)
-		or t2, t2, t4
-		stw t2, LEDS+4(zero)
+	ldw t4, LEDS+4(zero)
+	or t2, t2, t4
+	stw t2, LEDS+4(zero)
 
-		ret
+	ret
 
 	set_pixel_chunk_3:
-		ldw t4, LEDS+8(zero)
-		or t2, t2, t4
-		stw t2, LEDS+8(zero)
+	ldw t4, LEDS+8(zero)
+	or t2, t2, t4
+	stw t2, LEDS+8(zero)
 
-		ret
+	ret
 ; END: set_pixel
 
 
@@ -550,7 +550,7 @@ move_snake:
 
 ; BEGIN: save_checkpoint
 save_checkpoint:
-	addi sp, sp, -4 
+	addi sp, sp, -4
 	stw ra, 0(sp)
 
 	ldw t1, SCORE(zero)
@@ -565,8 +565,12 @@ save_checkpoint:
 	beq t1, zero, save_checkpoint_create
 
 	; if not, notify and break
-	addi v0, zero, 0
-	jmpi save_checkpoint_end
+	br save_checkpoint_do_nothing
+
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
+	ret
 
 	save_checkpoint_create:
 	; setting the checkpoint as valid
@@ -590,14 +594,12 @@ save_checkpoint:
 	ldw t3, GSA(zero)
 	stw t3, CP_GSA(zero)
 
-	; notify that checkpoint was saved
 	addi v0, zero, 1
 
-	jmpi save_checkpoint_end
+	ret
 
-	save_checkpoint_end:
-	ldw ra, 0(sp)
-	addi sp, sp, 4
+	save_checkpoint_do_nothing:
+	addi v0, zero, 0
 
 	ret
 ; END: save_checkpoint
@@ -644,6 +646,8 @@ restore_checkpoint:
 
 	restore_checkpoint_do_nothing:
 	addi v0, zero, 0
+
+	ret
 ; END: restore_checkpoint
 
 
