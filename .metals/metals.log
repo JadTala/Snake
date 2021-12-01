@@ -2,3 +2,4 @@
 [0m2021.11.30 11:22:00 INFO  time: initialize in 3.94s[0m
 [0m2021.11.30 11:22:03 WARN  Build server is not auto-connectable.[0m
 [0m2021.11.30 11:22:03 WARN  no build tool detected in workspace 'C:\Users\omman\Desktop\daSnake\Snake'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. [0m
+[0m2021.11.30 18:47:52 INFO  shutting down Metals[0m

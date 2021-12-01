@@ -31,7 +31,7 @@ addi    sp, zero, LEDS
 main:
 	; checkpoint initialization
 	stw zero, CP_VALID(zero)
-
+    
 	; initializing the game
 	game_init:
     call init_game
@@ -96,12 +96,15 @@ main:
 	game_blink:
 	call blink_score
 	jmpi game_display
+	
 
 	game_restore:
 	call restore_checkpoint
 	; checking whether or not checkpoint is valid
 	addi t0, zero, 0
 	beq v0, t0, game_loop
+	call clear_leds
+	call draw_array
 	addi t0, zero, 1
 	beq v0, t0, game_blink
 
@@ -550,8 +553,6 @@ move_snake:
 
 ; BEGIN: save_checkpoint
 save_checkpoint:
-	addi sp, sp, -4
-	stw ra, 0(sp)
 
 	ldw t1, SCORE(zero)
 	addi t2, zero, 10
@@ -562,15 +563,14 @@ save_checkpoint:
 
 	save_checkpoint_check:
 	; if score is multiple of 10 create new checkpoint
+	ldw t3, SCORE(zero)
+	beq t3, zero, save_checkpoint_do_nothing
 	beq t1, zero, save_checkpoint_create
+
 
 	; if not, notify and break
 	br save_checkpoint_do_nothing
 
-	ldw ra, 0(sp)
-	addi sp, sp, 4
-
-	ret
 
 	save_checkpoint_create:
 	; setting the checkpoint as valid
@@ -591,8 +591,16 @@ save_checkpoint:
 	ldw t3, SCORE(zero)
 	stw t3, CP_SCORE(zero)
 
-	ldw t3, GSA(zero)
-	stw t3, CP_GSA(zero)
+	; save gsa
+	addi t0, zero, 0
+	addi t1, zero, 0
+	addi t2, zero, 96
+	save_checkpoint_gsa:
+	ldw t3, GSA(t0)
+	stw t3, CP_GSA(t0)
+	addi t0, t0, 4
+	addi t1, t1, 1
+	blt t1, t2, save_checkpoint_gsa
 
 	addi v0, zero, 1
 
@@ -607,8 +615,6 @@ save_checkpoint:
 
 ; BEGIN: restore_checkpoint
 restore_checkpoint:
-	addi sp, sp, -4
-	stw ra, 0(sp)
 
 	; check if checkpoint is valid
 	addi t0, zero, 1
@@ -618,10 +624,6 @@ restore_checkpoint:
 	; else notify that not valid
 	beq t1, zero, restore_checkpoint_do_nothing
 
-	ldw ra, 0(sp)
-	addi sp, sp, 4
-
-	ret
 
 	restore_checkpoint_load:
 	ldw t3, CP_HEAD_X(zero)
@@ -637,8 +639,16 @@ restore_checkpoint:
 	ldw t3, CP_SCORE(zero)
 	stw t3, SCORE(zero)
 
-	ldw t3, CP_GSA(zero)
-	stw t3, GSA(zero)
+	; reset gsa
+	addi t0, zero, 0
+	addi t1, zero, 0
+	addi t2, zero, 96
+	restore_checkpoint_reset_gsa:
+	ldw t3, CP_GSA(t0)
+	stw t3, GSA(t0)
+	addi t0, t0, 4
+	addi t1, t1, 1
+	blt t1, t2, restore_checkpoint_reset_gsa
 
 	addi v0, zero, 1
 
@@ -646,7 +656,6 @@ restore_checkpoint:
 
 	restore_checkpoint_do_nothing:
 	addi v0, zero, 0
-
 	ret
 ; END: restore_checkpoint
 
@@ -656,7 +665,7 @@ blink_score:
 	addi sp, sp, -4
 	stw ra, 0(sp)
 
-	addi t7, zero, 5
+	addi t7, zero, 3
 
 	blink_score_loop:
 	; break if blinked enough times
@@ -670,13 +679,19 @@ blink_score:
 
 	; wait procedure
 	addi t1, zero, 1
-	slli t1, t1, 22
+	slli t1, t1, 21
 	blink_score_wait_loop:
 	addi t1, t1, -1
 	bne t1, zero, blink_score_wait_loop
 
 	; display the score
 	call display_score
+
+	addi t1, zero, 1
+	slli t1, t1, 22
+	blink_score_wait2_loop:
+	addi t1, t1, -1
+	bne t1, zero, blink_score_wait2_loop
 
 	addi t7, t7, -1
 	jmpi blink_score_loop
