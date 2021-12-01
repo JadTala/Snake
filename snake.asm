@@ -653,11 +653,14 @@ restore_checkpoint:
 
 ; BEGIN: blink_score
 blink_score:
-	addi t0, zero, 5
+	addi sp, sp, -4
+	stw ra, 0(sp)
+
+	addi t7, zero, 5
 
 	blink_score_loop:
 	; break if blinked enough times
-	beq t0, zero, blink_score_end
+	beq t7, zero, blink_score_end
 
 	; clear the score
 	stw zero, SEVEN_SEGS(zero)
@@ -675,10 +678,13 @@ blink_score:
 	; display the score
 	call display_score
 
-	addi t0, t0, -1
+	addi t7, t7, -1
 	jmpi blink_score_loop
 
 	blink_score_end:
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
 	ret
 ; END: blink_score
 
