@@ -553,7 +553,6 @@ move_snake:
 
 ; BEGIN: save_checkpoint
 save_checkpoint:
-
 	ldw t1, SCORE(zero)
 	addi t2, zero, 10
 	save_checkpoint_mod:
@@ -567,10 +566,8 @@ save_checkpoint:
 	beq t3, zero, save_checkpoint_do_nothing
 	beq t1, zero, save_checkpoint_create
 
-
 	; if not, notify and break
 	br save_checkpoint_do_nothing
-
 
 	save_checkpoint_create:
 	; setting the checkpoint as valid
@@ -615,7 +612,6 @@ save_checkpoint:
 
 ; BEGIN: restore_checkpoint
 restore_checkpoint:
-
 	; check if checkpoint is valid
 	addi t0, zero, 1
 	ldw t1, CP_VALID(zero)
@@ -623,7 +619,6 @@ restore_checkpoint:
 	beq t1, t0, restore_checkpoint_load
 	; else notify that not valid
 	beq t1, zero, restore_checkpoint_do_nothing
-
 
 	restore_checkpoint_load:
 	ldw t3, CP_HEAD_X(zero)
@@ -656,6 +651,7 @@ restore_checkpoint:
 
 	restore_checkpoint_do_nothing:
 	addi v0, zero, 0
+
 	ret
 ; END: restore_checkpoint
 
